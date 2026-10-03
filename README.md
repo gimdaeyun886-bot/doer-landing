@@ -1,6 +1,6 @@
 # Do-er 랜딩 페이지
 
-**배포 URL:** (배포 후 기입)
+**배포 URL:** https://doer-landing-nine.vercel.app
 
 ## 서비스 소개
 
