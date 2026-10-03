@@ -1,0 +1,138 @@
+/* Layout, spacing and readability pass made after viewing the rendered page
+   (1440px and a true 375px layout). Loaded last; no phone logic or copy is changed here. */
+
+/* ── Section label: a small pill so each section start is easy to find ── */
+/* Doubled class and the id-qualified variants: older heading rules reset paragraph padding. */
+.journey-label.journey-label,
+#experience .experience-heading > .journey-label,
+#adjust .adjustment-heading > .journey-label,
+#questions .faq-heading > .journey-label {
+  padding: 6px 14px 6px 10px; margin: 0 0 16px; max-width: 100%;
+}
+.journey-label {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 14px 6px 10px; margin-bottom: 16px; border-radius: 999px;
+  background: color-mix(in srgb, var(--scene-ink) 8%, transparent);
+  color: var(--scene-ink); font-size: 13px; font-weight: 700; line-height: 1.6; letter-spacing: 0;
+  width: max-content; max-width: 100%; white-space: nowrap;
+}
+.journey-label > span {
+  display: inline-grid; place-items: center; min-width: 26px; height: 22px; padding-inline: 6px;
+  border-radius: 999px; background: var(--scene-accent); color: var(--scene-bg);
+  font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums;
+}
+
+/* ── Cards on the cream ground: one soft, warm elevation instead of flat faces ── */
+#evening .plan-extraction,
+#evening .access-table,
+#experience .experience-status,
+#experience .cert-summary,
+#adjust .week-chart,
+#roadmap,
+#questions .faq-list,
+#signup .signup-card {
+  box-shadow: 0 1px 2px #5944310a, 0 14px 32px -18px #59443133;
+}
+#evening .calendar-dots i.is-today { box-shadow: 0 0 0 3px #f1532e33; }
+#evening .timeline-node { box-shadow: 0 0 0 6px var(--scene-bg); }
+#evening .extracted-task { border-left: 3px solid #5649ed; }
+
+/* ── Readability: supporting text one step larger and darker ── */
+#evening .evening-timeline h3 { font-size: 19px; }
+#evening .evening-timeline p { font-size: 15px; line-height: 1.75; }
+#evening .plan-extraction figcaption,
+#evening .six-weeks > p,
+#evening .plan-graphic-heading span,
+#evening .plan-pull span { font-size: 14px; color: #4f4b55; }
+#evening .plan-pull span { color: #5649ed; font-weight: 600; }
+#evening .access-table caption { font-size: 14px; }
+#evening .access-chips > span { font-size: 15px; }
+
+#experience .experience-track h3 { font-size: 17px; line-height: 1.6; }
+#experience .experience-track p { font-size: 15px; line-height: 1.75; }
+.experience-track .step-number { font-size: 14px; }
+.demo-help > p { font-size: 14px; line-height: 1.8; }
+.demo-help .quiet-button { font-size: 14px; }
+#experience .experience-status { color: #4f4b55; }
+#experience .experience-status .status-heading { font-size: 14px; color: #4f4b55; }
+#experience .experience-status strong { font-size: 18px; }
+#experience .outside-completion > p,
+#experience .state-chip,
+#experience .status-note { font-size: 14px; line-height: 1.75; }
+#experience .status-note { color: #4f4b55; }
+#experience .cert-summary th,
+#experience .cert-summary td { font-size: 15px; }
+#experience .cert-summary thead th { font-size: 14px; color: #4f4b55; }
+#experience .cert-summary caption,
+.experience-disclosure { font-size: 14px; }
+
+#adjust .week-chart > p,
+#adjust .week-day > span { font-size: 14px; color: #4f4b55; }
+#adjust .week-day:not(.is-changed) b { font-size: 14px; color: #4f4b55; }
+#adjust .chart-transfer > span { font-size: 14px; }
+.adjustment-condition { font-size: 15px; line-height: 1.8; color: #2c2a31; }
+.example-note { font-size: 14px; line-height: 1.8; color: #4f4b55; }
+.study-cutout figcaption { font-size: 14px; }
+
+#roadmap li p { color: #4f4b55; }
+#roadmap > p { font-size: 14px; color: #4f4b55; }
+
+#questions .faq-list summary { font-size: 17px; font-weight: 600; }
+#questions .faq-list details > p { font-size: 15px; line-height: 1.9; color: #4f4b55; }
+
+#signup .signup-pending > p { font-size: 15px; color: #4f4b55; }
+#signup .signup-next li,
+#signup .signup-next b,
+#signup .signup-pending .pending-note { font-size: 14px; color: #4f4b55; }
+#signup .signup-process > p { font-size: 15px; }
+
+.methods-table caption { font-size: 14px; }
+.night-opening .demo-status { font-size: 14px; }
+.site-footer > span, .site-footer > small { font-size: 14px; }
+
+/* ── Layout: stray rules and uneven alignment ── */
+/* The FAQ's top rule sat directly on the bottom edge of the roadmap card. */
+#questions { border-top: 0; }
+#roadmap { margin-bottom: 8px; }
+/* The last question's rule ran past the rounded card. */
+#questions .faq-list details:last-child { border-bottom: 0; }
+
+@media (min-width: 801px) {
+  /* Sections whose content is symmetric (full-width diagram, centred phone)
+     get a centred heading, so the right half above them is not left empty. */
+  #evening .opening-heading,
+  #experience .experience-heading {
+    display: block; max-width: 760px; margin-inline: auto; text-align: center;
+  }
+  #experience .experience-heading { margin-bottom: 56px; }
+  #evening .opening-heading .journey-label,
+  #experience .experience-heading .journey-label { margin-inline: auto; }
+  #evening .opening-heading h2,
+  #experience .experience-heading h2 { max-width: none; margin-inline: auto; }
+  #evening .opening-heading > p:last-child:not(.journey-label),
+  #experience .experience-heading > p:not(.journey-label) { margin-inline: auto; max-width: 560px; }
+
+  /* Everything under the centred phone follows the same axis. */
+  #experience .cert-summary { margin-inline: auto; }
+  #experience .cert-summary caption { text-align: center; }
+  .experience-disclosure { text-align: center; margin-top: 4px; }
+
+  /* Keep the left guidance text on the same left edge as the character. */
+  #adjust .adjustment-guidance { padding-inline: 20px 0; }
+}
+
+@media (max-width: 800px) {
+  .journey-label { font-size: 13px; margin-bottom: 12px; }
+  /* The help text and the reset button were squeezed side by side. */
+  .demo-help { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .demo-help > p { max-width: none; }
+  .demo-help > p br { display: none; }
+  /* Two-line step titles of unequal length: give the 2×2 grid even rows. */
+  #experience .experience-track { align-items: start; row-gap: 20px; }
+  #experience .experience-track h3 { font-size: 15px; line-height: 1.6; }
+  #experience .cert-summary th,
+  #experience .cert-summary td { font-size: 14px; }
+  #questions .faq-list summary { font-size: 16px; }
+  #evening .evening-timeline p { font-size: 15px; }
+  #evening .access-chips > span { font-size: 14px; }
+}
