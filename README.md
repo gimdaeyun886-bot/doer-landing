@@ -98,7 +98,7 @@ Supabase(PostgreSQL)의 `public.tasks` 테이블 하나를 씁니다. 전체 SQL
 | 이름 | 설명 |
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase 프로젝트 주소 |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase 공개 키 (anon 또는 publishable) |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase 공개 키 (publishable, 예전 이름 anon) |
 
 로컬은 `.env.local`에, 배포는 Vercel의 Project Settings → Environment Variables에 같은 이름으로 넣습니다. 실제 값은 저장소에 올리지 않습니다.
 
