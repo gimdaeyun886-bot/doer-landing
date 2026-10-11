@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Pagination } from "@/components/Pagination";
 import { TaskCard } from "@/components/TaskCard";
-import { Button, ButtonLink, EmptyState, Notice, PageHeader } from "@/components/ui";
+import { Button, ButtonLink, EmptyState, Icon, Notice, PageHeader } from "@/components/ui";
 import { isConfigured, listTasks } from "@/lib/supabase";
 import { PAGE_SIZE, STATUS_FILTERS, type StatusFilter } from "@/lib/tasks";
 
@@ -55,10 +55,13 @@ export default async function TasksPage({ searchParams }: { searchParams: Search
       {search.notice === "deleted" && <Notice tone="success">할 일을 삭제했어요.</Notice>}
 
       <form className="filters" action="/tasks" role="search">
-        <label className="sr-only" htmlFor="q">
-          할 일 또는 목표 검색
-        </label>
-        <input id="q" name="q" type="search" defaultValue={q} placeholder="할 일 또는 목표 검색" maxLength={40} />
+        <div className="search-field">
+          <label className="sr-only" htmlFor="q">
+            할 일 또는 목표 검색
+          </label>
+          <Icon name="search" />
+          <input id="q" name="q" type="search" defaultValue={q} placeholder="할 일 또는 목표 검색" maxLength={40} />
+        </div>
         <label className="sr-only" htmlFor="status">
           인증 상태
         </label>

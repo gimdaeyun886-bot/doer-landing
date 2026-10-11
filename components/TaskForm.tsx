@@ -21,7 +21,7 @@ export function TaskForm({ action, initial, currentProofUrl, submitLabel, pendin
   const errors = state.errors ?? {};
 
   return (
-    <form action={formAction} className="task-form" noValidate>
+    <form action={formAction} className="task-form" aria-busy={pending} noValidate>
       {state.message && <Notice tone="error">{state.message}</Notice>}
       {/* 제출할 때마다 새로 그려서, 서버가 돌려준 값이 입력칸에 확실히 들어가게 한다. */}
       <fieldset key={state.attempt} disabled={pending}>
@@ -42,13 +42,16 @@ export function TaskForm({ action, initial, currentProofUrl, submitLabel, pendin
         <Field id="memo" label="메모" error={errors.memo} hint={`${LIMITS.memo}자까지 적을 수 있어요.`}>
           <textarea id="memo" name="memo" rows={4} defaultValue={values.memo} maxLength={LIMITS.memo} placeholder="범위, 참고할 자료, 막혔던 부분 등" aria-invalid={Boolean(errors.memo)} aria-describedby={describedBy("memo", errors.memo, "h")} />
         </Field>
-        <ProofField serverError={errors.proof} currentProofUrl={currentProofUrl} />
+        <div className="proof-field">
+          <ProofField serverError={errors.proof} currentProofUrl={currentProofUrl} />
+        </div>
       </fieldset>
       <div className="form-actions">
         <ButtonLink href={cancelHref} variant="ghost">
           취소
         </ButtonLink>
         <Button type="submit" disabled={pending} aria-busy={pending}>
+          {pending && <span className="spinner" aria-hidden="true" />}
           {pending ? pendingLabel : submitLabel}
         </Button>
       </div>
