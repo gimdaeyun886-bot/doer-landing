@@ -13,7 +13,7 @@ export default async function SettingsPage() {
   return (
     <div className="screen screen-warm settings">
       <header className="headline">
-        <p className="date">{user?.email}</p>
+        <p className="date">{user?.email || (user?.app_metadata?.provider === "kakao" ? "카카오 계정으로 로그인" : "로그인 중")}</p>
         <h1>내 정보</h1>
       </header>
 
