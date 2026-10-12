@@ -36,7 +36,7 @@ export default function TermsPage() {
         <ul>
           <li>잠금은 사용자가 고른 앱에만, 사용자가 &lsquo;시작&rsquo;을 누른 뒤에만 걸려요.</li>
           <li>전화, 문자, 긴급 전화는 잠그지 않아요.</li>
-          <li>잠금에 쓰는 권한은 휴대폰 설정에서 언제든 끌 수 있어요. Do-er는 이것을 막지 않아요. 권한을 끄거나 앱을 지운 날은 인증하지 못한 날로 남아요.</li>
+          <li>잠금에 쓰는 권한은 휴대폰 설정에서 언제든 끌 수 있어요. Do-er는 막지 않아요. 권한을 끄거나 앱을 지운 날은 인증하지 못한 날로 남아요.</li>
           <li>휴대폰 종류나 앱 버전에 따라 일부 화면(릴스, 쇼츠 등)만 잠그는 기능이 정확하지 않을 수 있어요.</li>
         </ul>
       </section>
@@ -65,7 +65,7 @@ export default function TermsPage() {
         <p>
           {SITE.operator}
           <br />
-          문의: {SITE.contactEmail || "문의처 준비 중 (정식 모집 전에 안내합니다)"}
+          문의: {SITE.contactEmail || "문의처 준비 중 (정식 모집 전에 안내해요)"}
         </p>
       </section>
     </article>

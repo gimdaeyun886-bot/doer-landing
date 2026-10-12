@@ -16,3 +16,14 @@ Do-er_*.md
 
 # 디자인 확인용 캡처와 시안
 design-preview
+
+# 안드로이드 빌드 산출물
+android/.gradle
+android/build
+android/app/build
+android/local.properties
+.vercel-landing
+
+.vercel
+.env*
+dist

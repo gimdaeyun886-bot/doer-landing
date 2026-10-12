@@ -2,49 +2,53 @@
 
 AI 코딩 도구와 사람이 함께 보는 작업 규칙입니다. 기능 명세와 실행 방법은 README.md에 있습니다.
 
+## 제품 규칙 (바꾸지 않는다)
+
+- 오늘 할 일은 AI가 만든다. 사용자가 직접 더하거나 고치지 않는다.
+- 인증 방식(사진·퀴즈·글)은 과제마다 AI가 고른다. 사용자는 시작 전에 확인만 한다.
+- 잠금을 바로 푸는 길은 없다. 버거운 날은 코치에게 사정을 말하고, 조정안과 그 대가를 본 뒤 고르거나 그대로 한다.
+- 잠그는 것은 사용자가 고른 앱이나 그 앱의 화면(릴스·쇼츠 등)뿐이다. 전화·메신저·검색은 잠그지 않는다.
+- 권한 해제나 앱 삭제를 막는다고 말하지 않는다. '국내 최초', '우회 불가' 같은 표현을 쓰지 않는다.
+- 목표는 시험에 한정하지 않는다. 종류는 날짜 있음(dated), 날짜 없이 완성(finish), 매주 반복(ongoing) 세 가지다.
+
 ## 구조
 
-- `public/` — 미션 5의 정적 랜딩. `next.config.ts`의 rewrite로 `/`에서 `public/index.html`을 보여 준다. Next.js 화면에서 `/`로 갈 때는 `<Link>`가 아니라 `<a>`를 쓴다.
-- `app/tasks/` — 할 일 CRUD 화면 (App Router). 목록 `page.tsx`, 등록 `new/`, 상세 `[id]/`, 수정 `[id]/edit/`.
-- `app/tasks/actions.ts` — 등록·수정·삭제 Server Actions. 데이터 변경은 여기서만 한다.
-- `lib/tasks.ts` — 타입, 입력 규칙, 날짜·시간 표시. 서버와 브라우저가 함께 쓴다.
-- `lib/supabase.ts` — Supabase 연결과 조회. 서버에서만 불러 쓴다.
-- `components/` — 재사용 UI. 새 화면을 만들 때 먼저 여기 있는 것을 쓴다.
+- `public/` — 정적 랜딩. `next.config.ts`의 rewrite로 `/`에서 `public/index.html`을 보여 준다. Next.js 화면에서 `/`로 갈 때는 `<Link>`가 아니라 `<a>`를 쓴다.
+- `proxy.ts` — 로그인 세션 갱신과 화면 보호(`/today`, `/goals`, `/settings`).
+- `app/login`, `app/auth/actions.ts` — 가입(필수 동의 3가지), 로그인, 로그아웃, 탈퇴.
+- `app/goals/` — 코치와 대화(`new/`), 목록, 상세(`[id]/`, 달력 계획), 수정(`[id]/edit/`).
+- `app/today/` — 오늘 할 일, 시작 전 확인, 인증, 계획 조정.
+- `app/settings/`, `app/privacy/`, `app/terms/` — 잠글 앱, 처리방침, 약관.
+- `app/goals/actions.ts` — 데이터 변경과 AI 호출은 여기(Server Actions)서만 한다.
+- `lib/goals.ts` — 타입, 입력 규칙, 날짜 표시. 서버와 브라우저가 함께 쓴다.
+- `lib/plan.ts` — AI 호출(대화, 사진 읽기, 계획, 인증 판정, 조정안). 서버 전용.
+- `lib/supabase.ts` — 로그인한 사용자의 쿠키로 접속하는 Supabase 연결과 조회. 서버 전용.
+- `lib/native.ts` — 안드로이드 앱이 열어 주는 기능(`window.DoerNative`).
+- `android/` — 웹 화면을 감싸고 앱 잠금을 거는 안드로이드 앱(Java, Gradle).
 
-## 테이블: public.tasks
+## 데이터 (supabase/schema.sql)
 
-| 컬럼 | 타입 | 규칙 |
-|---|---|---|
-| id | uuid | 기본 키, 자동 생성 |
-| title | text | 필수, 1~60자 |
-| goal | text | 필수, 1~30자 |
-| due_date | date | 필수 |
-| estimated_minutes | integer | 필수, 5~600 |
-| memo | text | 선택, 300자 이하 |
-| proof_path | text | 선택. Storage 버킷 `task-proofs` 안의 경로 |
-| created_at | timestamptz | 자동 |
-| updated_at | timestamptz | 수정 시 트리거로 자동 갱신 |
+`goals`(목표와 `plan` jsonb), `proofs`(인증 기록), `app_settings`(잠글 앱, 시작한 날), `adjustments`(조정 기록), `consents`(동의 기록), `ai_runs`(AI 사용 기록). 모든 테이블에 `user_id`가 있고 RLS로 자기 줄만 읽고 쓴다. 사진은 비공개 버킷 `goal-materials`의 `사용자 id/materials|proofs/` 아래에 둔다.
 
-구조를 바꿀 때는 `supabase/schema.sql`, `lib/tasks.ts`, README의 표, 이 표를 함께 고친다.
+구조를 바꿀 때는 `supabase/schema.sql`, `lib/goals.ts`, README, 이 문서를 함께 고친다.
 
 ## 데이터 처리 규칙
 
-- 최종 저장소는 Supabase뿐이다. Mock 데이터나 로컬 스토리지에 핵심 데이터를 두지 않는다.
-- 조회는 서버 컴포넌트에서, 변경은 Server Action에서 한다. 브라우저에서 Supabase를 직접 호출하지 않는다.
-- 입력 규칙은 `lib/tasks.ts`의 `validateValues`와 `proofError` 한 곳에 둔다. 서버에서 반드시 다시 검사한다.
-- 인증 상태는 따로 저장하지 않는다. `proof_path`가 있으면 인증 완료다.
-- 이미지를 바꾸거나 할 일을 삭제하면 Storage의 이전 파일도 지운다. 저장에 실패하면 방금 올린 파일을 지운다.
-- 인증 이미지는 JPG, PNG, WEBP, 3MB 이하만 받는다. (Server Action 본문 한도 4MB, Vercel 한도 4.5MB)
-- Server Action이 끝나면 `revalidatePath("/tasks")` 후 `redirect`한다. `redirect`는 try/catch 밖에서 부른다.
+- 최종 저장소는 Supabase뿐이다. 조회는 서버 컴포넌트, 변경은 Server Action에서 한다. 브라우저에서 Supabase나 AI를 직접 부르지 않는다.
+- 입력 규칙은 `lib/goals.ts`에 두고 서버에서 반드시 다시 검사한다. 브라우저가 돌려보낸 값(대화 상태, 조정안)은 믿지 않고 서버에서 형태와 범위를 다시 맞춘다.
+- 사용자 글과 사진은 AI에게 자료로만 준다. 그 안의 지시문을 따르지 않도록 시스템 지시에 적는다.
+- 인증 사진 원본은 판정 7일 뒤 지운다. 목표를 지우거나 탈퇴하면 관련 사진을 함께 지운다.
+- 이미지는 JPG, PNG, WEBP, 3MB 이하만 받는다.
+- Server Action이 끝나면 `revalidatePath` 후 `redirect`한다. `redirect`는 try/catch 밖에서 부른다.
 - 오류 메시지는 사용자가 이해할 수 있는 한국어 문장으로 쓰고, 원인 상세는 서버 로그에만 남긴다.
-- 이번 미션에는 로그인과 RLS가 없다. 개인정보를 받는 입력칸을 만들지 않는다. (미션 7에서 적용)
+- AI 사용은 `ai_runs`로 사용자별 하루 횟수를 제한한다.
 
 ## 환경 변수
 
-`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. 값은 `.env.local`과 Vercel에만 두고 저장소에 올리지 않는다. service_role 키는 쓰지 않는다.
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `OPENAI_API_KEY`, `OPENAI_BASE_URL`(중계 서비스를 쓸 때만). 값은 `.env.local`과 Vercel에만 두고 저장소에 올리지 않는다. service_role 키는 쓰지 않는다.
 
 ## 화면 규칙
 
-- 색과 글꼴은 `app/globals.css`의 변수(크림 배경, 코랄, 바이올렛, Gothic A1)를 쓴다.
-- 로딩(`loading.tsx`), 오류(`error.tsx`), 빈 상태(`EmptyState`), 없는 주소(`not-found.tsx`)를 각각 처리한다.
-- 저장 중에는 입력칸과 버튼을 잠근다.
+- 색과 글꼴은 `app/globals.css`의 변수를 쓴다. 코랄은 내가 할 일과 잠금, 보라는 코치가 만든 것, 초록은 인증 끝.
+- 말투는 해요체, 군더더기 없이, 이모지 없이. 사용자를 탓하지 않는다.
+- 로딩, 오류, 빈 상태, 없는 주소를 각각 처리한다. 저장 중에는 입력칸과 버튼을 잠근다.

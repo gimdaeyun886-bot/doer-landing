@@ -218,9 +218,9 @@ export function toValues(goal: Goal, lockTargets: string[]): GoalValues {
 
 // 버거운 날 계획을 조정하면 생기는 대가. 사업 규칙이라 AI가 아니라 코드가 정한다.
 export function adjustmentRule(kind: GoalKind) {
-  if (kind === "dated") return "날짜가 정해져 있어요. 조정해서 못 한 분량은 남은 날에 나뉘어 더해져요.";
+  if (kind === "dated") return "날짜가 정해져 있어요. 조정해서 못 한 분량은 남은 날에 나눠 더해요.";
   if (kind === "finish") return "날짜를 정하지 않은 목표예요. 조정하면 그만큼 끝나는 날이 뒤로 밀려요.";
-  return "매주 반복하는 목표예요. 조정하면 그 주 분량이 줄고, 기록에 조정한 주로 남아요.";
+  return "매주 반복하는 목표예요. 조정하면 그 주 분량이 줄고 기록에 조정한 주로 남아요.";
 }
 
 export function formatDate(value: string) {

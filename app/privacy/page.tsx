@@ -4,7 +4,7 @@ import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = { title: "개인정보 처리방침" };
 
-const contact = SITE.contactEmail || "문의처 준비 중 (정식 모집 전에 안내합니다)";
+const contact = SITE.contactEmail || "문의처 준비 중 (정식 모집 전에 안내해요)";
 
 export default function PrivacyPage() {
   return (
@@ -60,8 +60,7 @@ export default function PrivacyPage() {
       <section>
         <h2>2. 휴대폰 앱의 접근성 권한</h2>
         <p>
-          안드로이드 앱은 고른 앱을 잠그기 위해 접근성 권한을 써요. 이 권한으로는 지금 화면에 떠 있는 앱이 잠근 앱(또는 잠근 화면)인지만 확인해요. 화면에 적힌 내용, 입력한 글자, 다른 앱의 사용 기록은 모으거나 밖으로 보내지 않아요. 설치된 앱 목록은 잠글 앱을 고를 때 휴대폰 안에서만 쓰고, 고른 앱의 이름만 저장해요. 권한은 휴대폰 설정에서 언제든 끌 수
-          있어요.
+          안드로이드 앱은 고른 앱을 잠그려고 접근성 권한을 써요. 이 권한으로는 지금 화면에 떠 있는 앱이 잠근 앱(또는 잠근 화면)인지만 확인해요. 화면에 적힌 내용, 입력한 글자, 다른 앱의 사용 기록은 모으거나 밖으로 보내지 않아요. 설치된 앱 목록은 잠글 앱을 고를 때 휴대폰 안에서만 쓰고 고른 앱의 이름만 저장해요. 권한은 휴대폰 설정에서 언제든 끌 수 있어요.
         </p>
       </section>
 

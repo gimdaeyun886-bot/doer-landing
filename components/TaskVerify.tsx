@@ -207,7 +207,7 @@ export function TaskVerify({ goalId, goalTitle, tone, index, task, proof }: Prop
             )}
           </div>
         )}
-        {kind === "photo" && !passed && <p className="keep-note">올린 사진은 판정에만 쓰고, 7일 뒤에 지워요.</p>}
+        {kind === "photo" && !passed && <p className="keep-note">올린 사진은 판정에만 쓰고 7일 뒤에 지워요.</p>}
       </dialog>
     </li>
   );

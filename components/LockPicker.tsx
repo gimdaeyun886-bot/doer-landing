@@ -91,7 +91,7 @@ export function LockPicker({ value, onChange, name }: { value: string[]; onChang
       <dialog ref={dialog} className="sheet app-sheet" aria-label="설치된 앱에서 고르기">
         <span className="sheet-grip" aria-hidden="true" />
         <h2>잠글 앱을 골라 주세요</h2>
-        <p>이 목록은 휴대폰 안에서만 쓰고, 고른 앱의 이름만 저장해요.</p>
+        <p>이 목록은 휴대폰 안에서만 쓰고 고른 앱의 이름만 저장해요.</p>
         <label className="search">
           <Icon name="search" size={18} />
           <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="앱 이름으로 찾기" aria-label="앱 이름으로 찾기" />
