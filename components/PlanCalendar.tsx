@@ -101,33 +101,27 @@ export function PlanCalendar({ plan, today, deadline, passed }: { plan: Plan; to
         </header>
         {tasks && tasks.length > 0 ? (
           <>
-            <ol className="tasks">
-              {tasks.map((task, index) => (
-                <li key={task.id}>
-                  <span className="num" data-done={done.has(task.id) || undefined}>
-                    {done.has(task.id) ? <Icon name="check" size={16} weight={2.6} /> : index + 1}
-                  </span>
-                  <div>
-                    <div className="task-top">
-                      <h4>{task.title}</h4>
-                      <span>약 {formatMinutes(task.minutes)}</span>
-                    </div>
+            <ol className="day-tasks">
+              {tasks.map((task) => {
+                const type = VERIFY_TYPES[verifyTypeOf(task)];
+                const passed = done.has(task.id);
+                return (
+                  <li key={task.id} data-done={passed || undefined}>
+                    <h4>{task.title}</h4>
                     <p>{task.detail}</p>
-                    <div className="verify">
-                      <Icon name={VERIFY_TYPES[verifyTypeOf(task)].icon} size={15} />
-                      <span>
-                        <b>
-                          {VERIFY_TYPES[verifyTypeOf(task)].label} · {task.verify_method}
-                        </b>
-                        {task.verify_guide}
+                    <p className="day-meta">
+                      <span className="day-verify">
+                        <Icon name={passed ? "check" : type.icon} size={14} weight={passed ? 2.6 : 1.8} />
+                        {passed ? "인증 끝" : task.verify_method}
                       </span>
-                    </div>
-                  </div>
-                </li>
-              ))}
+                      <span>약 {formatMinutes(task.minutes)}</span>
+                    </p>
+                  </li>
+                );
+              })}
             </ol>
             <p className="cal-sum">
-              {selected === today ? "오늘 자정까지" : "이날 자정까지"} {tasks.length}가지 인증 · 모두 약 {formatMinutes(totalMinutes(tasks))}
+              {selected === today ? "오늘 자정까지" : "이날 자정까지"} {tasks.length}가지 · 약 {formatMinutes(totalMinutes(tasks))}
             </p>
           </>
         ) : tasks ? (

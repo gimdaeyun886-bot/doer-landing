@@ -761,3 +761,25 @@ button { cursor: pointer; }
 .access-help p { margin-block: 10px 12px; color: var(--mut) !important; font-size: 13px !important; }
 .confirm .dock { bottom: 0; }
 .with-unit input { width: auto !important; min-width: 2ch; max-width: 6ch; field-sizing: content; }
+
+/* ── 고른 날의 할 일: 상자 안의 상자를 없애고, 한 줄 한 줄을 넓게 쓴다 ── */
+.cal-day { gap: 0; margin-top: 4px; padding: 20px 0 0; border-top: 1px solid var(--hair); border-radius: 0; background: none; }
+.cal-day header { gap: 4px; padding: 0 2px 4px; }
+.cal-day h3 { font-size: 18px; letter-spacing: -0.02em; }
+.cal-day h3 em { padding: 3px 9px; border-radius: 10px; }
+.cal-day header p { color: var(--mut); font-size: 13.5px; line-height: 20px; }
+.day-tasks { display: grid; }
+.day-tasks li { display: grid; gap: 6px; padding: 18px 2px 18px 18px; position: relative; }
+.day-tasks li + li { border-top: 1px solid var(--hair); }
+/* 왼쪽의 짧은 색 막대로 과제 하나하나를 구분한다. */
+.day-tasks li::before { content: ""; position: absolute; left: 0; top: 22px; bottom: 22px; width: 3px; border-radius: 2px; background: var(--coral); }
+.day-tasks li[data-done]::before { background: var(--green); }
+.day-tasks h4 { margin: 0; font-size: 16px; font-weight: 700; line-height: 24px; letter-spacing: -0.01em; }
+.day-tasks p { color: #6f655a; font-size: 14px; line-height: 22px; }
+.day-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; color: var(--mut) !important; font-size: 13px !important; }
+.day-verify { display: inline-flex; align-items: center; gap: 6px; min-width: 0; padding: 5px 11px 5px 9px; border-radius: 12px; background: var(--coach-soft); color: var(--coach-ink); font-weight: 600; }
+.day-tasks li[data-done] .day-verify { background: var(--green-soft); color: var(--green); }
+.day-meta > span:last-child { flex: none; }
+.cal-sum { margin-top: 0; padding: 14px 2px 6px; border-top: 1px solid var(--hair); color: var(--mut); font-size: 13px; font-weight: 600; text-align: left; }
+.cal-empty { padding: 14px 2px 10px; font-size: 14px; line-height: 22px; }
+.cal-card { padding-bottom: 18px; }
