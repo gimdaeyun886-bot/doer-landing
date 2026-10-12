@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 잠근 앱을 열었을 때 화면 전체를 덮는 잠금 화면. 깊은 밤색 바탕에 할 일 하나만 또렷하게 둔다. -->
+<!-- 잠근 앱을 열었을 때 화면 전체를 덮는 잠금 화면. 검은 바탕 한가운데에 그림과 한마디, 아래에 나가는 길 하나. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/lock_root"
     android:layout_width="match_parent"
@@ -7,98 +7,98 @@
     android:background="@drawable/bg_lock_night"
     android:fitsSystemWindows="true">
 
-  <LinearLayout
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:paddingStart="30dp"
-    android:paddingTop="36dp"
-    android:paddingEnd="30dp"
-    android:paddingBottom="22dp">
-
-    <Space
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:layout_weight="2" />
-
-    <ImageView
-        android:id="@+id/lock_mark"
-        android:layout_width="232dp"
-        android:layout_height="232dp"
-        android:layout_marginStart="-22dp"
-        android:adjustViewBounds="true"
-        android:scaleType="fitCenter"
-        android:src="@drawable/lock_art" />
-
-    <TextView
-        android:id="@+id/lock_where"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="-26dp"
-        android:background="@drawable/bg_lock_pill"
-        android:paddingStart="13dp"
-        android:paddingTop="6dp"
-        android:paddingEnd="13dp"
-        android:paddingBottom="6dp"
-        android:textColor="#F0A17E"
-        android:textSize="13sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:id="@+id/lock_title"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:letterSpacing="-0.02"
-        android:lineSpacingExtra="5dp"
-        android:text="지금은\n잠겨 있어요"
-        android:textColor="#F6F0E8"
-        android:textSize="32sp"
-        android:textStyle="bold" />
+        android:layout_height="match_parent"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:paddingStart="28dp"
+        android:paddingTop="24dp"
+        android:paddingEnd="28dp"
+        android:paddingBottom="20dp">
 
-    <TextView
-        android:id="@+id/lock_body"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="14dp"
-        android:lineSpacingExtra="6dp"
-        android:text="오늘 할 일을 모두 인증하면 바로 열려요.\n전화와 메신저, 검색은 그대로 쓸 수 있어요."
-        android:textColor="#9C9186"
-        android:textSize="15sp" />
+        <Space
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="5" />
 
-    <Space
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:layout_weight="3" />
+        <ImageView
+            android:id="@+id/lock_mark"
+            android:layout_width="264dp"
+            android:layout_height="264dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/lock_art" />
 
-    <TextView
-        android:id="@+id/lock_go"
-        android:layout_width="match_parent"
-        android:layout_height="58dp"
-        android:background="@drawable/bg_lock_button"
-        android:gravity="center"
-        android:text="인증하러 가기"
-        android:textColor="#FFFFFF"
-        android:textSize="17sp"
-        android:textStyle="bold" />
+        <TextView
+            android:id="@+id/lock_where"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:background="@drawable/bg_lock_pill"
+            android:paddingStart="13dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="13dp"
+            android:paddingBottom="6dp"
+            android:textColor="#F08A63"
+            android:textSize="13sp"
+            android:textStyle="bold" />
 
-    <TextView
-        android:id="@+id/lock_close"
-        android:layout_width="match_parent"
-        android:layout_height="50dp"
-        android:layout_marginTop="6dp"
-        android:gravity="center"
-        android:text="닫기"
-        android:textColor="#9C9186"
-        android:textSize="15sp" />
+        <TextView
+            android:id="@+id/lock_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:gravity="center"
+            android:letterSpacing="-0.03"
+            android:text="잠겼어요"
+            android:textColor="#F6F0E8"
+            android:textSize="38sp"
+            android:textStyle="bold" />
 
-    <TextView
-        android:id="@+id/lock_hint"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:text="오늘이 버겁다면 Do-er에서 코치에게 사정을 말해 주세요"
-        android:textColor="#6B6159"
-        android:textSize="12sp" />
-  </LinearLayout>
+        <TextView
+            android:id="@+id/lock_body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center"
+            android:lineSpacingExtra="6dp"
+            android:text="오늘 할 일을 모두 인증하기 전에는\n열리지 않아요."
+            android:textColor="#8F857B"
+            android:textSize="15sp" />
+
+        <Space
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="6" />
+
+        <TextView
+            android:id="@+id/lock_go"
+            android:layout_width="match_parent"
+            android:layout_height="58dp"
+            android:background="@drawable/bg_lock_button"
+            android:gravity="center"
+            android:text="인증하러 가기"
+            android:textColor="#FFFFFF"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/lock_close"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_marginTop="4dp"
+            android:gravity="center"
+            android:text="닫기"
+            android:textColor="#8F857B"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/lock_hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="전화·메신저·검색은 그대로 쓸 수 있어요"
+            android:textColor="#5C534C"
+            android:textSize="12sp" />
+    </LinearLayout>
 </FrameLayout>

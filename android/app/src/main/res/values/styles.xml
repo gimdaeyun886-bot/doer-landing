@@ -10,8 +10,8 @@
     <!-- 잠금 화면: 화면 전체를 깊은 밤색으로 덮고, 천천히 밝아지며 나타난다. -->
     <style name="LockTheme" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@drawable/bg_lock_night</item>
-        <item name="android:statusBarColor">#1B1613</item>
-        <item name="android:navigationBarColor">#1B1613</item>
+        <item name="android:statusBarColor">#000000</item>
+        <item name="android:navigationBarColor">#000000</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
         <item name="android:windowAnimationStyle">@style/LockAnimation</item>

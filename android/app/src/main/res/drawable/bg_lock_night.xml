@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 잠금 화면 바탕: 깊고 차분한 밤색 한 가지. -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="#1B1613" />
-</shape>
+<!-- 잠금 화면 바탕: 검정. 그림 뒤쪽에서만 검붉은 빛이 아주 은은하게 번진다. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape><solid android:color="#000000" /></shape>
+    </item>
+    <item>
+        <shape>
+            <gradient
+                android:type="radial"
+                android:centerX="0.5"
+                android:centerY="0.33"
+                android:gradientRadius="62%p"
+                android:startColor="#4A160C"
+                android:centerColor="#1A0805"
+                android:endColor="#00000000" />
+        </shape>
+    </item>
+</layer-list>
