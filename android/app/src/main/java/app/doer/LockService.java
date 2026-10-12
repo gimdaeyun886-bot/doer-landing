@@ -97,11 +97,12 @@ public class LockService extends AccessibilityService {
 
         // 앱 전체는 홈으로, 화면만 잠근 경우는 그 화면에서 한 걸음 물러나게 한다.
         performGlobalAction(rule.whole ? GLOBAL_ACTION_HOME : GLOBAL_ACTION_BACK);
-        Intent intent = new Intent(this, LockActivity.class);
+        final Intent intent = new Intent(this, LockActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         intent.putExtra("where", where);
         intent.putExtra("whole", rule.whole);
-        startActivity(intent);
+        // 물러나는 동작이 끝난 뒤에 잠금 창을 올린다. 바로 띄우면 홈 화면이 그 위를 덮어 버린다.
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> startActivity(intent), 380);
     }
 
     /** 지금 화면이 잠근 화면(릴스, 쇼츠 등)이면 그 이름을 돌려준다. */
