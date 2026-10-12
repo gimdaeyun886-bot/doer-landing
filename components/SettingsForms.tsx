@@ -47,6 +47,7 @@ export function AccessStatus() {
       <p className="row-hint">
         Do-er는 접근성 권한으로 지금 열린 앱이 잠근 앱인지만 확인해요. 화면에 적힌 내용이나 입력한 글자는 읽지도 모으지도 않아요. 권한은 휴대폰 설정에서 언제든 끌 수 있고, 끄면 그날은 인증하지 못한 것으로 남아요.
       </p>
+      {status === "on" && <SeenIds />}
       {status === "off" && (
         <>
           <Button type="button" variant="soft" onClick={() => native()?.openAccessSettings()}>
@@ -56,6 +57,31 @@ export function AccessStatus() {
         </>
       )}
     </section>
+  );
+}
+
+// 가림막이 안 맞을 때: 잠근 앱 화면의 요소 이름표를 복사해 개발자에게 보낼 수 있게 한다. 글 내용은 들어 있지 않다.
+function SeenIds() {
+  const [note, setNote] = useState<string | null>(null);
+  if (!native()?.getSeenIds) return null;
+  async function copy() {
+    const ids = native()?.getSeenIds?.() ?? "[]";
+    try {
+      await navigator.clipboard.writeText(ids);
+      setNote(`이름표 ${(JSON.parse(ids) as string[]).length}개를 복사했어요. 그대로 붙여 넣어 보내 주세요.`);
+    } catch {
+      setNote("복사하지 못했어요. 다시 눌러 주세요.");
+    }
+  }
+  return (
+    <details className="access-help">
+      <summary>릴스·쇼츠가 제대로 안 가려질 때</summary>
+      <p>잠금을 시작한 뒤 인스타그램이나 유튜브에서 안 가려지는 화면을 잠깐 열었다가 돌아와 아래 버튼을 눌러 주세요. 그 화면의 요소 이름표만 복사하고, 글이나 사진 내용은 들어가지 않아요.</p>
+      <Button type="button" variant="quiet" className="btn-sm" onClick={copy}>
+        화면 정보 복사
+      </Button>
+      {note && <p>{note}</p>}
+    </details>
   );
 }
 

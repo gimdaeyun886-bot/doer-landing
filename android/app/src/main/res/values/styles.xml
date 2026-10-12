@@ -7,10 +7,18 @@
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowLightNavigationBar">true</item>
     </style>
-    <style name="LockTheme" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@color/night</item>
-        <item name="android:statusBarColor">@color/night</item>
-        <item name="android:navigationBarColor">@color/night</item>
+    <!-- 잠금 창: 뒤가 비쳐 보이는 바탕 위에 카드가 올라온다. -->
+    <style name="LockTheme" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@color/cream</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:windowAnimationStyle">@style/LockAnimation</item>
+    </style>
+    <style name="LockAnimation">
+        <item name="android:windowEnterAnimation">@android:anim/fade_in</item>
+        <item name="android:windowExitAnimation">@android:anim/fade_out</item>
     </style>
     <color name="cream">#FBF7F0</color>
     <color name="night">#2A2420</color>

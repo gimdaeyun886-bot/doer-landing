@@ -187,6 +187,14 @@ public class MainActivity extends Activity {
             if (url != null && url.startsWith("https://")) startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
         }
 
+        /** 잠근 앱의 화면에서 본 요소 이름표 목록. 글 내용은 들어 있지 않다. 가림막이 안 맞을 때 원인을 찾는 데 쓴다. */
+        @JavascriptInterface
+        public String getSeenIds() {
+            synchronized (LockService.SEEN) {
+                return new JSONArray(LockService.SEEN).toString();
+            }
+        }
+
         @JavascriptInterface
         public void setLock(boolean active, String targetsJson) {
             Locks.set(MainActivity.this, active, targetsJson);
