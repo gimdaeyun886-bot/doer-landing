@@ -572,3 +572,8 @@ button { cursor: pointer; }
 .social-kakao { background: #fee500; color: #191600; }
 .or { display: flex; align-items: center; gap: 12px; margin-top: 6px; color: var(--faint); font-size: 12px; }
 .or::before, .or::after { content: ""; flex: 1; height: 1px; background: #e6ddd1; }
+
+/* 앱 고르기 카드는 넓게 써야 해서 말풍선 들여쓰기를 따르지 않는다. */
+.lock-card.under-coach { margin-left: 0; }
+.quick.under-coach { max-width: calc(100% - 42px); }
+.lock-card.under-coach { max-width: 100%; }

@@ -16,6 +16,9 @@ const DAILY_LIMIT = { plan: 12, chat: 200, read: 20, verify: 60, adjust: 10 };
 const DETAIL_WEEKS = 8;
 const MAX_WEEKS = 26;
 
+// 응답이 늦는 호출 하나가 화면 전체를 몇 분씩 붙잡지 않도록 시간 제한을 둔다.
+const ai = () => new OpenAI({ timeout: 80_000, maxRetries: 1 });
+
 export const isAiConfigured = () => Boolean(process.env.OPENAI_API_KEY);
 
 type Purpose = keyof typeof DAILY_LIMIT;
@@ -128,7 +131,7 @@ export async function coachTurn(history: ChatMessage[], slots: Slots): Promise<T
   const { material_summary, lock_targets, ...known } = slots;
   const state = `지금까지 알아들은 것: ${JSON.stringify(known)}\n잠글 앱: ${lock_targets ? (lock_targets.length ? "고름" : "없이 하기로 함") : "아직 안 고름"}\n사진에서 읽은 내용: ${material_summary ?? "(사진 없음)"}`;
   try {
-    const response = await new OpenAI().chat.completions.parse({
+    const response = await ai().chat.completions.parse({
       model: CHAT_MODEL,
       reasoning_effort: "low",
       max_completion_tokens: 3000,
@@ -154,7 +157,7 @@ export async function coachTurn(history: ChatMessage[], slots: Slots): Promise<T
 export async function readMaterial(imageDataUrl: string): Promise<string | null> {
   if (!isAiConfigured() || !(await underLimit("read"))) return null;
   try {
-    const response = await new OpenAI().chat.completions.create({
+    const response = await ai().chat.completions.create({
       model: CHAT_MODEL,
       reasoning_effort: "low",
       max_completion_tokens: 2500,
@@ -303,7 +306,7 @@ async function requestWeekDays(goal: Goal, start: string, outline: Outline, week
   const prompt = `${describe(goal, start)}\n\n전체 흐름 (${outline.summary})\n${flow}\n\n지금 날짜별로 풀 주: ${week.week}주차 — ${week.focus}\n이 주에 끝낼 것: ${week.items.join(" / ")}\n이 주의 날짜: ${dates.map((date) => `${date}(${weekdayOf(date)})`).join(", ")}`;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const response = await new OpenAI().chat.completions.parse({
+      const response = await ai().chat.completions.parse({
         model: DAYS_MODEL,
         reasoning_effort: "low",
         max_completion_tokens: 6000,
@@ -351,7 +354,7 @@ export async function generatePlan(goal: Goal): Promise<PlanResult> {
   const usage = { prompt_tokens: 0, completion_tokens: 0 };
   try {
     const wanted = weekCountFor(goal);
-    const response = await new OpenAI().chat.completions.parse({
+    const response = await ai().chat.completions.parse({
       model: PLAN_MODEL,
       reasoning_effort: (process.env.OPENAI_PLAN_EFFORT as "low" | "medium" | "high" | undefined) ?? "low",
       max_completion_tokens: 12000,
@@ -406,7 +409,7 @@ export async function verifyProof(goal: Pick<Goal, "id" | "title">, task: PlanTa
   if (!isAiConfigured()) return { ok: false, message: "AI 키가 아직 연결되지 않아 인증을 확인하지 못했어요." };
   if (!(await underLimit("verify"))) return { ok: false, message: "오늘 준비된 인증 확인 횟수를 모두 썼어요. 내일 다시 시도해 주세요." };
   try {
-    const response = await new OpenAI().chat.completions.parse({
+    const response = await ai().chat.completions.parse({
       model: CHAT_MODEL,
       reasoning_effort: "low",
       max_completion_tokens: 2000,
@@ -456,7 +459,7 @@ export async function makeQuiz(goal: Goal, task: PlanTask): Promise<{ ok: true; 
   if (!isAiConfigured()) return { ok: false, message: "AI 키가 아직 연결되지 않았어요." };
   if (!(await underLimit("verify"))) return { ok: false, message: "오늘 준비된 인증 확인 횟수를 모두 썼어요. 내일 다시 시도해 주세요." };
   try {
-    const response = await new OpenAI().chat.completions.parse({
+    const response = await ai().chat.completions.parse({
       model: CHAT_MODEL,
       reasoning_effort: "low",
       max_completion_tokens: 2000,
@@ -493,7 +496,7 @@ export async function judgeAnswer(goal: Goal, task: PlanTask, kind: "quiz" | "wr
       ? "사용자가 문제 세 개에 답했습니다. 문제마다 답이 맞거나, 그 과제를 실제로 한 사람만 쓸 수 있을 만큼 구체적이면 맞은 것으로 봅니다. 두 문제 이상 맞으면 통과입니다. 이유에는 몇 문제가 맞았는지와, 틀린 문제는 무엇을 다시 보면 되는지 적습니다."
       : "사용자가 오늘 한 것을 자기 말로 적었습니다. 그 과제에서 다루는 내용이 구체적으로 드러나고 '인증 안내'가 요구한 것이 담겨 있으면 통과입니다. 과제 제목을 되풀이하거나 '열심히 했다'처럼 누구나 쓸 수 있는 말뿐이면 통과시키지 않고, 무엇을 더 적어야 하는지 알려 줍니다.";
   try {
-    const response = await new OpenAI().chat.completions.parse({
+    const response = await ai().chat.completions.parse({
       model: CHAT_MODEL,
       reasoning_effort: "low",
       max_completion_tokens: 2000,
@@ -547,7 +550,7 @@ export async function suggestAdjustments(input: AdjustInput, reason: string): Pr
     })
     .join("\n\n");
   try {
-    const response = await new OpenAI().chat.completions.parse({
+    const response = await ai().chat.completions.parse({
       model: CHAT_MODEL,
       reasoning_effort: "low",
       max_completion_tokens: 3000,
@@ -558,7 +561,11 @@ export async function suggestAdjustments(input: AdjustInput, reason: string): Pr
 조정안을 2개 또는 3개 내놓습니다. 사용자가 고르기 전에는 아무것도 바뀌지 않고, "그대로 한다"는 선택지는 화면이 따로 보여 주므로 넣지 않습니다.
 
 규칙
-- 잠금을 그냥 풀어 주는 안은 없습니다. 어떤 안이든 오늘 인증할 것이 하나 이상 남아야 합니다. 정말 아무것도 못 하는 사정(아픔, 사고 등)일 때만 오늘 것을 모두 옮기는 안을 하나 넣을 수 있습니다.
+- 대가 없이 잠금만 풀어 주는 안은 없습니다. 모든 안에는 뒤에 치를 대가가 있어야 합니다.
+- 오늘 남은 과제가 둘 이상이면, 되도록 하나는 오늘 남기는 안을 냅니다. 정말 아무것도 못 하는 사정(아픔, 사고 등)일 때만 오늘 것을 모두 옮기는 안을 하나 넣을 수 있습니다.
+- 오늘 남은 과제가 하나뿐이면, 그 과제를 서로 다른 날로 옮기는 안을 냅니다(예: 내일로 / 주말로). 매주 반복하는 목표라면 빼는 안을 냅니다. 이때도 대가를 분명히 적습니다.
+- 고를 수 없는 안은 내놓지 않습니다.
+- 할 수 있는 일은 과제를 통째로 다른 날로 옮기거나(moves) 통째로 빼는(drops) 것뿐입니다. 과제 하나를 쪼개거나 시간을 줄일 수는 없으니, label과 impact에 "30분만", "절반만"처럼 과제 일부만 한다는 말을 쓰지 않습니다. 오늘 남는 과제는 원래 분량 그대로입니다.
 - 안마다 대가가 달라야 합니다. 예: 오늘 양을 줄이고 주말에 더하기 / 가장 중요한 것 하나만 하고 나머지는 내일로 / 덜 중요한 과제 하나 빼기.
 - moves의 to_date는 내일 이후이고 "앞으로 7일" 안의 날짜여야 합니다. 쉬는 날로는 옮기지 않습니다. 매주 반복하는 목표의 과제는 옮기지 않고 뺍니다.
 - impact에는 대가를 숨기지 않고 구체적으로 적습니다. 예: "토요일이 2시간에서 2시간 40분으로 늘어요.", "이번 주 달리기가 4번에서 3번이 되고, 조정한 주로 기록돼요."

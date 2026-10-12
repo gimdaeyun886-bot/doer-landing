@@ -121,11 +121,12 @@ export function AdjustButton() {
     startTransition(async () => {
       const result = await applyAdjustment(reason, option);
       if (!result.ok) return setState((current) => ({ ...current, message: result.message }));
+      // 화면은 확인을 누른 뒤에 새로 그린다. 먼저 그리면 이 창이 결과를 보여 주기 전에 사라질 수 있다.
       setDone(option);
-      router.refresh();
     });
   function close() {
     dialog.current?.close();
+    if (done) router.refresh();
     setState({});
     setDone(null);
     setReason("");
@@ -136,7 +137,11 @@ export function AdjustButton() {
       <button type="button" className="text-btn adjust-open" onClick={() => dialog.current?.showModal()}>
         오늘 계획이 버거워요
       </button>
-      <dialog ref={dialog} className="sheet adjust-sheet" aria-labelledby="adjust-title" onClose={() => (setState({}), setDone(null))}>
+      <dialog ref={dialog} className="sheet adjust-sheet" aria-labelledby="adjust-title" onClose={() => {
+        if (done) router.refresh();
+        setState({});
+        setDone(null);
+      }}>
         <span className="sheet-grip" aria-hidden="true" />
         {done ? (
           <>

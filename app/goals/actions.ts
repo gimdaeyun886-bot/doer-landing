@@ -371,7 +371,12 @@ export async function requestAdjustment(reason: string): Promise<AdjustState> {
     .filter((item) => item.today.length);
   if (!input.length) return { message: "오늘 남은 할 일이 없어요." };
   const result = await suggestAdjustments(input, text);
-  return result.ok ? { reply: result.reply, options: result.options } : { message: result.message };
+  if (!result.ok) return { message: result.message };
+  // 코치가 돌려준 안에서 실제 오늘 할 일을 가리키는 것만 남긴다.
+  const known = new Set(input.flatMap((item) => item.today.map((task) => `${item.goal.id}:${task.id}`)));
+  const real = (entry: { goal_id: string; task_id: string }) => known.has(`${entry.goal_id}:${entry.task_id}`);
+  const options = result.options.map((option) => ({ ...option, moves: option.moves.filter(real), drops: option.drops.filter(real) })).filter((option) => option.moves.length || option.drops.length);
+  return options.length ? { reply: result.reply, options } : { message: "코치가 쓸 만한 조정안을 찾지 못했어요. 사정을 조금 더 자세히 말해 주세요." };
 }
 
 // 고른 조정안을 계획에 적용한다. 받은 값은 믿지 않고, 실제 오늘 할 일과 계획 범위에 맞는 것만 반영한다.
