@@ -1,6 +1,6 @@
 // Supabase 연결. 서버(서버 컴포넌트, Server Action)에서만 불러 쓴다.
 import { createClient } from "@supabase/supabase-js";
-import { MATERIAL_BUCKET, PAGE_SIZE, type Goal, type KindFilter } from "./goals";
+import { MATERIAL_BUCKET, PAGE_SIZE, cleanLockTargets, type Goal, type KindFilter, type Proof } from "./goals";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 // Supabase가 안내하는 새 이름(publishable)과 예전 이름(anon)을 모두 받는다.
@@ -17,7 +17,7 @@ export function materialUrl(path: string) {
   return `${url}/storage/v1/object/public/${MATERIAL_BUCKET}/${path}`;
 }
 
-export const GOAL_COLUMNS = "id,title,kind,deadline,daily_minutes,note,lock_targets,material_path,plan,plan_status,plan_generated_at,created_at,updated_at";
+export const GOAL_COLUMNS = "id,title,kind,deadline,daily_minutes,schedule,note,material_path,material_summary,plan,plan_status,plan_generated_at,created_at,updated_at";
 
 export async function listGoals({ page, q, kind }: { page: number; q: string; kind: KindFilter }) {
   const from = (page - 1) * PAGE_SIZE;
@@ -51,4 +51,27 @@ export async function getGoal(id: string) {
   const { data, error } = await getSupabase().from("goals").select(GOAL_COLUMNS).eq("id", id).maybeSingle();
   if (error) throw new Error(`상세 조회 실패: ${error.message}`);
   return data as unknown as Goal | null;
+}
+
+// 잠글 앱. 목표가 아니라 사용자 한 명에게 한 벌이다.
+export async function getLockTargets() {
+  const { data, error } = await getSupabase().from("app_settings").select("lock_targets").eq("id", 1).maybeSingle();
+  if (error) throw new Error(`설정 조회 실패: ${error.message}`);
+  return cleanLockTargets((data?.lock_targets as string[] | undefined) ?? []);
+}
+
+export async function saveLockTargets(lockTargets: string[]) {
+  const { error } = await getSupabase().from("app_settings").upsert({ id: 1, lock_targets: cleanLockTargets(lockTargets), updated_at: new Date().toISOString() });
+  if (error) console.error("lock targets save failed:", error.message);
+}
+
+const PROOF_COLUMNS = "goal_id,task_id,date,passed,reason,image_path,created_at";
+
+export async function listProofs(filter: { goalId?: string; date?: string }) {
+  let query = getSupabase().from("proofs").select(PROOF_COLUMNS);
+  if (filter.goalId) query = query.eq("goal_id", filter.goalId);
+  if (filter.date) query = query.eq("date", filter.date);
+  const { data, error } = await query.limit(1000);
+  if (error) throw new Error(`인증 기록 조회 실패: ${error.message}`);
+  return (data ?? []) as Proof[];
 }

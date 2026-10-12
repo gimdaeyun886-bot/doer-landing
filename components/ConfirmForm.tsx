@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { KINDS, LIMITS, LOCK_PRESETS, materialError, type FormState, type GoalField, type GoalKind, type GoalValues } from "@/lib/goals";
+import { KINDS, LIMITS, materialError, type FormState, type GoalField, type GoalKind, type GoalValues } from "@/lib/goals";
+import { LockPicker } from "./LockPicker";
 import { Button, Icon, Notice, Symbol } from "./ui";
 
 type Props = {
@@ -29,7 +30,7 @@ export function ConfirmForm({ action, initial, today, mode, initialFile, current
       <header className="headline">
         <p className="overline">{create ? "코치가 알아들은 것" : "목표 고치기"}</p>
         <h1>{create ? "이대로 계획을\n짤까요?" : "달라진 점을\n고쳐 주세요"}</h1>
-        <p>{create ? "틀린 곳은 눌러서 고쳐요." : "날짜나 시간을 바꾸면 코치가 계획을 다시 짜요."}</p>
+        <p>{create ? "틀린 곳은 눌러서 고쳐요. 여기 적힌 대로 끝나는 날까지 날짜별 계획을 짜요." : "날짜나 시간을 바꾸면 코치가 오늘부터의 계획을 다시 짜요."}</p>
       </header>
 
       {state.message && <Notice tone="error">{state.message}</Notice>}
@@ -40,7 +41,10 @@ export function ConfirmForm({ action, initial, today, mode, initialFile, current
           <input id="title" name="title" type="text" defaultValue={values.title} maxLength={LIMITS.title} placeholder="예: 정보처리기사 실기" aria-invalid={Boolean(errors.title)} aria-describedby={errors.title ? "title-error" : undefined} />
         </Row>
         <KindRow kind={values.kind} deadline={values.deadline} today={today} error={errors.deadline} />
-        <Row id="daily_minutes" label="하루에 낼 시간" error={errors.daily_minutes}>
+        <Row id="schedule" label="언제 할 수 있는지" optional error={errors.schedule}>
+          <input id="schedule" name="schedule" type="text" defaultValue={values.schedule} maxLength={LIMITS.schedule} placeholder="예: 평일 밤 9시 이후, 주말 오전. 수요일은 못 해요" aria-invalid={Boolean(errors.schedule)} aria-describedby={errors.schedule ? "schedule-error" : undefined} />
+        </Row>
+        <Row id="daily_minutes" label="보통 하루에 낼 시간" error={errors.daily_minutes}>
           <span className="with-unit">
             <input id="daily_minutes" name="daily_minutes" type="number" inputMode="numeric" min={LIMITS.minMinutes} max={LIMITS.maxMinutes} step={5} defaultValue={values.daily_minutes} placeholder="60" aria-invalid={Boolean(errors.daily_minutes)} aria-describedby={errors.daily_minutes ? "daily_minutes-error" : undefined} />
             <span>분</span>
@@ -50,6 +54,8 @@ export function ConfirmForm({ action, initial, today, mode, initialFile, current
           <textarea id="note" name="note" rows={2} defaultValue={values.note} maxLength={LIMITS.note} placeholder="지금 수준, 약한 부분, 쓰는 교재나 강의" aria-invalid={Boolean(errors.note)} aria-describedby={errors.note ? "note-error" : undefined} />
         </Row>
         <MaterialRow serverError={errors.material} file={file} onFile={setFile} currentMaterialUrl={currentMaterialUrl} />
+        {/* 대화에서 코치가 읽은 사진과 같은 사진일 때만 읽은 내용을 함께 보낸다. */}
+        <input type="hidden" name="material_summary" value={file && file === initialFile ? values.material_summary : ""} />
         <LockRow selected={values.lock_targets} />
       </fieldset>
 
@@ -96,6 +102,7 @@ function KindRow({ kind: initialKind, deadline, today, error }: { kind: GoalKind
           </label>
         ))}
       </div>
+      <p className="row-hint">{KINDS.find((item) => item.value === kind)!.hint}</p>
       {kind === "dated" && <input id="deadline" name="deadline" type="date" min={today} defaultValue={deadline} aria-label="날짜" aria-invalid={Boolean(error)} aria-describedby={error ? "deadline-error" : undefined} />}
       {error && (
         <p className="row-error" id="deadline-error" role="alert">
@@ -182,35 +189,25 @@ function MaterialRow({ serverError, file, onFile, currentMaterialUrl }: { server
 }
 
 function LockRow({ selected }: { selected: string[] }) {
-  const custom = selected.filter((item) => !LOCK_PRESETS.includes(item));
+  const [value, setValue] = useState(selected);
   return (
     <div className="sheet-row">
       <span className="row-label" id="lock-label">
-        잠글 화면
+        잠글 앱
       </span>
-      <div className="chips" role="group" aria-labelledby="lock-label">
-        {LOCK_PRESETS.map((item) => (
-          <label key={item} className="chip">
-            <input type="checkbox" name="lock" value={item} defaultChecked={selected.includes(item)} />
-            <span>
-              <Icon name="check" size={15} weight={2.4} />
-              {item}
-            </span>
-          </label>
-        ))}
-      </div>
-      <input name="lock_custom" type="text" defaultValue={custom.join(", ")} maxLength={60} placeholder="다른 화면이 있으면 적어요" aria-label="다른 잠글 화면" />
+      <LockPicker value={value} onChange={setValue} name="lock" />
+      <p className="row-hint">목표마다가 아니라 한 번 정하면 모든 목표에 똑같이 적용돼요. 고른 앱만 잠기고 전화·메신저·검색은 열려 있어요.</p>
     </div>
   );
 }
 
-const STEPS = ["범위 살펴보기", "주차별로 나누기", "오늘 할 일 정하기"];
+const STEPS = ["목표와 상황 살펴보기", "전체 기간을 주 단위로 나누기", "날짜마다 할 일 정하기", "무리한 날이 없는지 점검하기"];
 
 // 저장 중: 코치가 계획을 만드는 동안 화면을 덮는다. 조용한 화면.
 function Planning() {
   const [step, setStep] = useState(0);
   useEffect(() => {
-    const timer = setInterval(() => setStep((current) => Math.min(current + 1, STEPS.length - 1)), 2800);
+    const timer = setInterval(() => setStep((current) => Math.min(current + 1, STEPS.length - 1)), 9000);
     return () => clearInterval(timer);
   }, []);
   return (
@@ -224,8 +221,8 @@ function Planning() {
           <Symbol size={44} />
         </span>
       </div>
-      <h2>{"계획을 오늘 할 일로\n나누고 있어요"}</h2>
-      <p>10초쯤 걸릴 수 있어요.</p>
+      <h2>{"끝나는 날까지의 계획을\n날짜별로 짜고 있어요"}</h2>
+      <p>{"꼼꼼히 짜느라 1분쯤 걸려요.\n화면을 닫지 말고 기다려 주세요."}</p>
       <ol className="steps">
         {STEPS.map((label, index) => (
           <li key={label} data-state={index < step ? "done" : index === step ? "now" : "next"}>

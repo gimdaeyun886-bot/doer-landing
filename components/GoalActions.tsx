@@ -47,10 +47,10 @@ export function ReplanButton({ action, label }: { action: SimpleAction; label: s
   );
 }
 
-// 시작(잠금)은 앱에서 제공할 기능이라, 지금은 무엇이 일어날지만 알려 준다.
+// 실제 잠금은 휴대폰에 설치하는 앱에서 걸린다. 웹에서는 무엇이 일어날지 알려 주고, 인증은 여기서 바로 한다.
 export function StartButton({ lockTargets }: { lockTargets: string[] }) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const targets = lockTargets.length ? `${lockTargets.join("·")} 화면` : "고른 화면";
+  const targets = lockTargets.length ? lockTargets.join("·") : "고른 앱";
   return (
     <>
       <Button type="button" onClick={() => dialog.current?.showModal()}>
@@ -58,9 +58,9 @@ export function StartButton({ lockTargets }: { lockTargets: string[] }) {
       </Button>
       <dialog ref={dialog} className="sheet" aria-labelledby="start-title">
         <span className="sheet-grip" aria-hidden="true" />
-        <h2 id="start-title">잠금과 인증은 곧 열려요</h2>
+        <h2 id="start-title">잠금은 앱에서 걸려요</h2>
         <p>
-          앱에서는 여기서 시작하면 {targets}이 잠기고, 오늘 할 일을 모두 인증해야 다시 열려요. 지금은 계획과 오늘 할 일까지 써 볼 수 있어요.
+          휴대폰 앱에서는 여기서 시작하면 고른 앱({targets})이 잠기고, 오늘 할 일을 모두 인증해야 다시 열려요. 다른 앱을 막는 일은 웹에서는 할 수 없어서, 지금은 인증까지 먼저 써 볼 수 있어요. 위 목록에서 할 일을 눌러 사진을 올려 주세요.
         </p>
         <div className="sheet-actions">
           <Button type="button" variant="quiet" onClick={() => dialog.current?.close()}>
