@@ -86,7 +86,7 @@
         android:id="@+id/lock_close"
         android:layout_width="match_parent"
         android:layout_height="50dp"
-        android:layout_marginTop="-26dp"
+        android:layout_marginTop="6dp"
         android:gravity="center"
         android:text="닫기"
         android:textColor="#9C9186"
