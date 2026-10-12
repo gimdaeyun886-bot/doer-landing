@@ -1,15 +1,15 @@
 // AI 코치: 대화에서 목표를 알아듣고, 목표를 받아 전체 계획과 오늘 할 일을 만든다. 서버에서만 불러 쓴다.
-import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import OpenAI from "openai";
+import { zodResponseFormat } from "openai/helpers/zod";
 import { z } from "zod";
 import { cleanLockTargets, daysLeft, formatDate, isKind, isRealDate, todayInSeoul, type Goal, type GoalKind, type Plan } from "./goals";
 import { getSupabase, materialUrl } from "./supabase";
 
-const MODEL = "claude-haiku-5-5";
+const MODEL = process.env.OPENAI_MODEL || "gpt-6-luna";
 // 로그인이 없는 동안 요금이 튀지 않도록, 서비스 전체의 하루 사용 횟수를 제한한다.
 const DAILY_LIMIT = { plan: 60, chat: 600 };
 
-export const isAiConfigured = () => Boolean(process.env.ANTHROPIC_API_KEY);
+export const isAiConfigured = () => Boolean(process.env.OPENAI_API_KEY);
 
 type Purpose = keyof typeof DAILY_LIMIT;
 
@@ -19,17 +19,17 @@ async function underLimit(purpose: Purpose) {
   return (count ?? 0) < DAILY_LIMIT[purpose];
 }
 
-async function logRun(purpose: Purpose, ok: boolean, goalId: string | null, usage: { input_tokens: number; output_tokens: number } | null) {
+async function logRun(purpose: Purpose, ok: boolean, goalId: string | null, usage: { prompt_tokens: number; completion_tokens: number } | null | undefined) {
   const { error } = await getSupabase()
     .from("ai_runs")
-    .insert({ purpose, ok, goal_id: goalId, model: MODEL, input_tokens: usage?.input_tokens ?? null, output_tokens: usage?.output_tokens ?? null });
+    .insert({ purpose, ok, goal_id: goalId, model: MODEL, input_tokens: usage?.prompt_tokens ?? null, output_tokens: usage?.completion_tokens ?? null });
   if (error) console.error("ai run log failed:", error.message);
 }
 
 function failureMessage(error: unknown, fallback: string) {
-  console.error("ai call failed:", error instanceof Anthropic.APIError ? `${error.status} ${error.message}` : error);
-  if (error instanceof Anthropic.AuthenticationError) return "AI 키가 올바르지 않아요.";
-  if (error instanceof Anthropic.RateLimitError) return "지금 요청이 많아요. 잠시 후 다시 시도해 주세요.";
+  console.error("ai call failed:", error instanceof OpenAI.APIError ? `${error.status} ${error.message}` : error);
+  if (error instanceof OpenAI.AuthenticationError) return "AI 키가 올바르지 않아요.";
+  if (error instanceof OpenAI.RateLimitError) return "지금 요청이 많아요. 잠시 후 다시 시도해 주세요.";
   return fallback;
 }
 
@@ -101,17 +101,17 @@ export async function coachTurn(history: ChatMessage[], slots: Slots, hasMateria
   if (!isAiConfigured()) return { ok: false, message: "지금은 코치와 대화할 수 없어요. 아래에서 직접 적어 주세요." };
   if (!(await underLimit("chat"))) return { ok: false, message: "오늘 준비된 대화 횟수를 모두 썼어요. 아래에서 직접 적어 주세요." };
 
-  const messages: Anthropic.MessageParam[] = history.map((message) => ({ role: message.role === "user" ? "user" : "assistant", content: message.text }));
+  const messages = history.map((message) => ({ role: message.role === "user" ? ("user" as const) : ("assistant" as const), content: message.text }));
   const state = `지금까지 알아들은 것: ${JSON.stringify(slots)}\n사진 자료: ${hasMaterial ? "올림" : "아직 없음"}`;
   try {
-    const response = await new Anthropic().messages.parse({
+    const response = await new OpenAI().chat.completions.parse({
       model: MODEL,
-      max_tokens: 2000,
-      system: `${turnSystem()}\n\n${state}`,
-      messages,
-      output_config: { effort: "low", format: zodOutputFormat(TurnSchema) },
+      max_completion_tokens: 2000,
+      messages: [{ role: "system", content: `${turnSystem()}\n\n${state}` }, ...messages],
+      response_format: zodResponseFormat(TurnSchema, "turn"),
     });
-    const parsed = response.stop_reason === "end_turn" ? response.parsed_output : null;
+    const choice = response.choices[0];
+    const parsed = choice?.finish_reason === "stop" ? choice.message.parsed : null;
     await logRun("chat", Boolean(parsed), null, response.usage);
     if (!parsed) return { ok: false, message: "코치가 답을 만들지 못했어요. 다시 말해 주세요." };
     const next = sanitize(parsed, slots);
@@ -195,15 +195,17 @@ function cleanPlan(plan: z.infer<typeof PlanSchema>, dailyMinutes: number): Plan
 export type PlanResult = { ok: true; plan: Plan } | { ok: false; message: string };
 
 function requestPlan(goal: Goal, withImage: boolean) {
-  const content: Anthropic.ContentBlockParam[] = [];
-  if (withImage && goal.material_path) content.push({ type: "image", source: { type: "url", url: materialUrl(goal.material_path) } });
+  const content: OpenAI.Chat.ChatCompletionContentPart[] = [];
+  if (withImage && goal.material_path) content.push({ type: "image_url", image_url: { url: materialUrl(goal.material_path) } });
   content.push({ type: "text", text: describe(goal) });
-  return new Anthropic().messages.parse({
+  return new OpenAI().chat.completions.parse({
     model: MODEL,
-    max_tokens: 8000,
-    system: PLAN_SYSTEM,
-    messages: [{ role: "user", content }],
-    output_config: { effort: "low", format: zodOutputFormat(PlanSchema) },
+    max_completion_tokens: 8000,
+    messages: [
+      { role: "system", content: PLAN_SYSTEM },
+      { role: "user", content },
+    ],
+    response_format: zodResponseFormat(PlanSchema, "plan"),
   });
 }
 
@@ -217,12 +219,13 @@ export async function generatePlan(goal: Goal): Promise<PlanResult> {
       response = await requestPlan(goal, true);
     } catch (error) {
       // 첨부 이미지를 읽지 못한 경우에는 이미지 없이 한 번 더 시도한다.
-      if (!(goal.material_path && error instanceof Anthropic.BadRequestError)) throw error;
+      if (!(goal.material_path && error instanceof OpenAI.BadRequestError)) throw error;
       response = await requestPlan(goal, false);
     }
-    const plan = response.stop_reason === "end_turn" && response.parsed_output ? cleanPlan(response.parsed_output, goal.daily_minutes) : null;
+    const choice = response.choices[0];
+    const plan = choice?.finish_reason === "stop" && choice.message.parsed ? cleanPlan(choice.message.parsed, goal.daily_minutes) : null;
     await logRun("plan", Boolean(plan), goal.id, response.usage);
-    if (!plan) console.error("plan generation incomplete:", response.stop_reason);
+    if (!plan) console.error("plan generation incomplete:", choice?.finish_reason);
     return plan ? { ok: true, plan } : { ok: false, message: "코치가 계획을 끝까지 만들지 못했어요. 다시 시도해 주세요." };
   } catch (error) {
     await logRun("plan", false, goal.id, null);
