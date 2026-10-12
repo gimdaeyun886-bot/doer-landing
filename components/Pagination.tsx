@@ -1,14 +1,14 @@
 import Link from "next/link";
 
 // 현재 검색 조건을 유지한 채 페이지 번호만 바꾼 주소를 만든다.
-export function Pagination({ page, totalPages, params }: { page: number; totalPages: number; params: Record<string, string> }) {
+export function Pagination({ page, totalPages, params, basePath }: { page: number; totalPages: number; params: Record<string, string>; basePath: string }) {
   if (totalPages <= 1) return null;
   const href = (target: number) => {
     const query = new URLSearchParams(params);
     if (target > 1) query.set("page", String(target));
     else query.delete("page");
     const text = query.toString();
-    return text ? `/tasks?${text}` : "/tasks";
+    return text ? `${basePath}?${text}` : basePath;
   };
   const pages = Array.from({ length: totalPages }, (_, index) => index + 1).filter((n) => n === 1 || n === totalPages || Math.abs(n - page) <= 1);
 

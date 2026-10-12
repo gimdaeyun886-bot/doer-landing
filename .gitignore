@@ -13,3 +13,6 @@ next-env.d.ts
 _workspace
 gpt-prompt-*.md
 Do-er_*.md
+
+# 디자인 확인용 캡처와 시안
+design-preview
