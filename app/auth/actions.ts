@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { MATERIAL_BUCKET } from "@/lib/goals";
 import { getSupabase, getUser, isConfigured } from "@/lib/supabase";
@@ -21,6 +22,8 @@ function koreanAuthError(message: string) {
 }
 
 async function recordConsent() {
+  // 동의 여부는 계정 정보에도 적어 둔다. proxy.ts가 이 값으로 동의 화면을 거쳤는지 본다.
+  await (await getSupabase()).auth.updateUser({ data: { consent_version: CONSENT_VERSION } });
   const { error } = await (await getSupabase()).from("consents").upsert({ version: CONSENT_VERSION, agreed_at: new Date().toISOString() });
   if (error) console.error("consent save failed:", error.message);
 }
@@ -60,6 +63,27 @@ export async function signIn(_prev: AuthState, formData: FormData): Promise<Auth
   // 가입할 때 동의했지만 기록하지 못한 경우(이메일 확인을 거친 가입) 여기서 남긴다.
   if (data.user?.user_metadata?.consent_version) await recordConsent();
   redirect("/today");
+}
+
+// 구글·카카오 로그인. 제공자 화면으로 가는 주소를 만든다. 휴대폰 앱에서는 바깥 브라우저로 열고 앱으로 돌아온다.
+export async function signInWith(provider: "google" | "kakao", inApp: boolean): Promise<{ url?: string; message?: string }> {
+  if (!isConfigured()) return { message: "저장소가 아직 연결되지 않았어요." };
+  const list = await headers();
+  const origin = `${list.get("x-forwarded-proto") ?? "http"}://${list.get("x-forwarded-host") ?? list.get("host")}`;
+  const { data, error } = await (await getSupabase()).auth.signInWithOAuth({ provider, options: { redirectTo: inApp ? "doer://callback" : `${origin}/auth/callback`, skipBrowserRedirect: true } });
+  if (error || !data.url) {
+    console.error("oauth start failed:", error?.message);
+    return { message: "로그인 화면을 열지 못했어요. 잠시 후 다시 시도해 주세요." };
+  }
+  return { url: data.url };
+}
+
+// 구글·카카오로 처음 들어온 사람은 여기서 필수 동의를 받는다.
+export async function agree(_prev: { message?: string }, formData: FormData): Promise<{ message?: string }> {
+  if (!formData.get("agree_terms") || !formData.get("agree_privacy") || !formData.get("agree_age")) return { message: "필수 항목에 모두 동의해 주세요." };
+  if (!(await getUser())) redirect("/login");
+  await recordConsent();
+  redirect("/goals/new");
 }
 
 export async function signOut() {

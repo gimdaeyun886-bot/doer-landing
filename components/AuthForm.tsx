@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useState } from "react";
-import { signIn, signUp, type AuthState } from "@/app/auth/actions";
+import { useActionState, useEffect, useState, useTransition } from "react";
+import { signIn, signInWith, signUp, type AuthState } from "@/app/auth/actions";
+import { native } from "@/lib/native";
 import { Button, Icon, Notice, Symbol } from "./ui";
 
 const AGREEMENTS = [
@@ -12,7 +13,10 @@ const AGREEMENTS = [
 ] as const;
 
 // 로그인과 가입을 한 화면에서 오간다. 가입할 때는 필수 동의 세 가지를 받는다.
-export function AuthForm({ bye }: { bye?: boolean }) {
+const PROVIDERS = { google: "구글로 계속하기", kakao: "카카오로 계속하기" } as const;
+type Provider = keyof typeof PROVIDERS;
+
+export function AuthForm({ bye, providers = [], failed }: { bye?: boolean; providers?: Provider[]; failed?: boolean }) {
   const [inState, inAction, inPending] = useActionState<AuthState, FormData>(signIn, {});
   const [upState, upAction, upPending] = useActionState<AuthState, FormData>(signUp, {});
   const [mode, setMode] = useState<"in" | "up">("up");
@@ -23,7 +27,18 @@ export function AuthForm({ bye }: { bye?: boolean }) {
   }, [upState]);
   const signup = mode === "up";
   const state: AuthState = signup ? upState : inState.message || inState.email ? inState : { email: upState.email, notice: upState.notice };
-  const pending = inPending || upPending;
+  const [social, startSocial] = useTransition();
+  const [socialError, setSocialError] = useState<string | null>(null);
+  const pending = inPending || upPending || social;
+
+  const continueWith = (provider: Provider) =>
+    startSocial(async () => {
+      const app = native();
+      const result = await signInWith(provider, Boolean(app?.openExternal));
+      if (!result.url) return setSocialError(result.message ?? "로그인 화면을 열지 못했어요.");
+      if (app?.openExternal) app.openExternal(result.url);
+      else window.location.href = result.url;
+    });
   const all = agreed.length === AGREEMENTS.length;
 
   return (
@@ -39,6 +54,18 @@ export function AuthForm({ bye }: { bye?: boolean }) {
       {bye && <Notice tone="success">탈퇴했어요. 올린 사진과 기록을 모두 지웠어요.</Notice>}
       {state.notice && <Notice tone="success">{state.notice}</Notice>}
       {state.message && <Notice tone="error">{state.message}</Notice>}
+      {(socialError || failed) && <Notice tone="error">{socialError ?? "로그인을 끝내지 못했어요. 다시 시도해 주세요."}</Notice>}
+
+      {providers.length > 0 && (
+        <div className="social">
+          {providers.map((provider) => (
+            <button key={provider} type="button" className={`btn social-${provider}`} disabled={pending} onClick={() => continueWith(provider)}>
+              {PROVIDERS[provider]}
+            </button>
+          ))}
+          <p className="or">또는 이메일로</p>
+        </div>
+      )}
 
       <form action={signup ? upAction : inAction} className="auth-form" key={mode}>
         <fieldset disabled={pending} className="sheet-list">

@@ -77,6 +77,16 @@ public class MainActivity extends Activity {
         else web.restoreState(state);
     }
 
+    /** 바깥 브라우저에서 로그인을 마치고 돌아오면, 받은 값을 웹 화면에 넘겨 로그인을 끝낸다. */
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        Uri data = intent.getData();
+        if (data != null && "doer".equals(data.getScheme()) && data.getEncodedQuery() != null) {
+            web.loadUrl(BuildConfig.APP_URL + "/auth/callback?" + data.getEncodedQuery());
+        }
+    }
+
     /** 사진첩에서 고르거나 바로 찍을 수 있게 한다. */
     private void openPicker() {
         Intent pick = new Intent(Intent.ACTION_GET_CONTENT);
@@ -164,6 +174,11 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void openAccessSettings() {
             startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+        }
+
+        @JavascriptInterface
+        public void openExternal(String url) {
+            if (url != null && url.startsWith("https://")) startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
         }
 
         @JavascriptInterface

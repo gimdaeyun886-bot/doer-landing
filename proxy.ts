@@ -28,6 +28,19 @@ export async function proxy(request: NextRequest) {
     login.search = "";
     return NextResponse.redirect(login);
   }
+  // 로그인은 했지만 약관 동의를 아직 하지 않은 사람(구글·카카오 첫 로그인)은 동의 화면으로 보낸다.
+  const agreed = Boolean(data.user?.user_metadata?.consent_version);
+  if (data.user && !agreed && path !== "/consent") {
+    const consent = request.nextUrl.clone();
+    consent.pathname = "/consent";
+    consent.search = "";
+    return NextResponse.redirect(consent);
+  }
+  if (data.user && agreed && path === "/consent") {
+    const home = request.nextUrl.clone();
+    home.pathname = "/today";
+    return NextResponse.redirect(home);
+  }
   if (data.user && isLogin) {
     const home = request.nextUrl.clone();
     home.pathname = "/today";
@@ -37,4 +50,4 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-export const config = { matcher: ["/today/:path*", "/goals/:path*", "/settings/:path*", "/login"] };
+export const config = { matcher: ["/today/:path*", "/goals/:path*", "/settings/:path*", "/login", "/consent"] };

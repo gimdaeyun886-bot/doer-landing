@@ -27,6 +27,13 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- 구글·카카오 로그인을 바깥 브라우저에서 마치고 앱으로 돌아오는 주소 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="doer" android:host="callback" />
+            </intent-filter>
         </activity>
 
         <activity

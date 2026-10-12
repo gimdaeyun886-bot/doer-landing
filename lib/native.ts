@@ -6,6 +6,7 @@ type Bridge = {
   hasAccess: () => boolean; // 잠금에 필요한 접근성 권한이 켜져 있는지
   openAccessSettings: () => void;
   setLock: (active: boolean, targetsJson: string) => void;
+  openExternal?: (url: string) => void; // 구글·카카오 로그인 화면을 바깥 브라우저로 연다
 };
 
 export function native(): Bridge | null {
