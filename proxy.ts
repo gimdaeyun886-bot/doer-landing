@@ -18,7 +18,9 @@ export async function proxy(request: NextRequest) {
       },
     },
   });
-  const { data } = await supabase.auth.getUser();
+  // 쿠키에 든 세션만 읽는다(만료됐을 때만 갱신 요청). 데이터 접근은 DB의 RLS가 토큰을 다시 검증하므로, 여기서는 화면 이동만 정한다.
+  const { data: sessionData } = await supabase.auth.getSession();
+  const data = { user: sessionData.session?.user ?? null };
   const path = request.nextUrl.pathname;
   const isLogin = path === "/login";
 

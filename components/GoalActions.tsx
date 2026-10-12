@@ -1,7 +1,17 @@
 "use client";
 
-import { useActionState, useRef } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { Button, Icon, Notice } from "./ui";
+
+// 목표가 만들어졌으면, 이 기기에 적어 둔 코치와의 대화를 지운다.
+export function ClearChat() {
+  useEffect(() => {
+    try {
+      localStorage.removeItem("doer.chat.v2");
+    } catch {}
+  }, []);
+  return null;
+}
 
 type SimpleAction = (prev: { message?: string }, formData: FormData) => Promise<{ message?: string }>;
 

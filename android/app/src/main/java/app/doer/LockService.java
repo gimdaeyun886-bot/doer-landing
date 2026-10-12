@@ -26,6 +26,16 @@ public class LockService extends AccessibilityService {
         SCREEN_IDS.put("com.facebook.katana/릴스", new String[]{"reels_viewer", "fb_shorts_viewer"});
     }
 
+    // 뷰 id로 못 찾았을 때 쓰는 두 번째 방법: 아래쪽 탭 가운데 '선택된' 탭의 이름.
+    private static final Map<String, String[]> TAB_LABELS = new HashMap<>();
+
+    static {
+        TAB_LABELS.put("com.instagram.android/릴스", new String[]{"릴스", "Reels"});
+        TAB_LABELS.put("com.instagram.android/탐색", new String[]{"검색 및 탐색", "Search and explore"});
+        TAB_LABELS.put("com.google.android.youtube/쇼츠", new String[]{"Shorts", "쇼츠"});
+        TAB_LABELS.put("com.facebook.katana/릴스", new String[]{"릴스", "Reels"});
+    }
+
     private long lastBlock;
 
     @Override
@@ -66,6 +76,19 @@ public class LockService extends AccessibilityService {
             for (String id : ids) {
                 List<AccessibilityNodeInfo> found = root.findAccessibilityNodeInfosByViewId(pkg + ":id/" + id);
                 if (found != null && !found.isEmpty()) return part;
+            }
+        }
+        for (String part : rule.parts) {
+            String[] labels = TAB_LABELS.get(pkg + "/" + part);
+            if (labels == null) continue;
+            for (String label : labels) {
+                List<AccessibilityNodeInfo> found = root.findAccessibilityNodeInfosByText(label);
+                if (found == null) continue;
+                for (AccessibilityNodeInfo node : found) {
+                    CharSequence text = node.getText() != null ? node.getText() : node.getContentDescription();
+                    // 글 속에 그 낱말이 들어간 경우가 아니라, 이름이 딱 그 탭이고 지금 선택된 것만 본다.
+                    if (text != null && text.toString().trim().equalsIgnoreCase(label) && (node.isSelected() || (node.getParent() != null && node.getParent().isSelected()))) return part;
+                }
             }
         }
         return null;

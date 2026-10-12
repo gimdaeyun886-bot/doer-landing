@@ -63,6 +63,7 @@ export type Goal = {
   daily_minutes: number;
   schedule: string | null; // 언제 할 수 있는지 (요일, 시간대)
   note: string | null;
+  context: string | null; // 대화에서 코치가 더 알게 된 것. 한 줄에 하나씩
   material_path: string | null; // Storage 버킷 안의 파일 경로
   material_summary: string | null; // 코치가 사진에서 읽은 내용
   plan: Plan | null;
@@ -79,11 +80,12 @@ export type GoalValues = {
   daily_minutes: string;
   schedule: string;
   note: string;
+  context: string;
   material_summary: string;
   lock_targets: string[]; // 잠글 앱은 목표가 아니라 사용자 한 명에게 한 벌이다.
 };
 
-export type GoalField = "title" | "deadline" | "daily_minutes" | "schedule" | "note" | "lock_targets" | "material";
+export type GoalField = "title" | "deadline" | "daily_minutes" | "schedule" | "note" | "context" | "lock_targets" | "material";
 
 export type FormState = {
   attempt: number;
@@ -92,7 +94,7 @@ export type FormState = {
   values?: GoalValues;
 };
 
-export const EMPTY_VALUES: GoalValues = { title: "", kind: "dated", deadline: "", daily_minutes: "", schedule: "", note: "", material_summary: "", lock_targets: [] };
+export const EMPTY_VALUES: GoalValues = { title: "", kind: "dated", deadline: "", daily_minutes: "", schedule: "", note: "", context: "", material_summary: "", lock_targets: [] };
 
 export const PAGE_SIZE = 5;
 export const MATERIAL_BUCKET = "goal-materials";
@@ -102,7 +104,7 @@ export const MATERIAL_TYPES: Record<string, string> = {
   "image/png": "png",
   "image/webp": "webp",
 };
-export const LIMITS = { title: 40, note: 300, schedule: 120, summary: 1500, minMinutes: 10, maxMinutes: 600, lockCount: 12, lockLength: 80, proofText: 1000, appeal: 300, reason: 200 };
+export const LIMITS = { title: 40, note: 300, context: 1500, facts: 14, schedule: 120, summary: 1500, minMinutes: 10, maxMinutes: 600, lockCount: 12, lockLength: 80, proofText: 1000, appeal: 300, reason: 200 };
 // 잠글 수 있는 앱. parts가 있으면 앱 전체 대신 그 화면만 골라 잠글 수 있다.
 // 휴대폰 앱에서는 설치된 앱 목록에서 직접 고르고, 웹에서는 자주 쓰는 앱 가운데 고른다.
 export const LOCK_APPS: { name: string; pkg: string; parts?: string[] }[] = [
@@ -175,6 +177,7 @@ export function readValues(formData: FormData): GoalValues {
     daily_minutes: text("daily_minutes"),
     schedule: text("schedule"),
     note: text("note"),
+    context: text("context"),
     material_summary: text("material_summary").slice(0, LIMITS.summary),
     lock_targets: cleanLockTargets(picked),
   };
@@ -200,6 +203,7 @@ export function validateValues(values: GoalValues) {
 
   if (values.schedule.length > LIMITS.schedule) errors.schedule = `${LIMITS.schedule}자 이하로 적어 주세요.`;
   if (values.note.length > LIMITS.note) errors.note = `${LIMITS.note}자 이하로 적어 주세요.`;
+  if (values.context.length > LIMITS.context) errors.context = `${LIMITS.context}자 이하로 적어 주세요.`;
   return errors;
 }
 
@@ -211,6 +215,7 @@ export function toValues(goal: Goal, lockTargets: string[]): GoalValues {
     daily_minutes: String(goal.daily_minutes),
     schedule: goal.schedule ?? "",
     note: goal.note ?? "",
+    context: goal.context ?? "",
     material_summary: goal.material_summary ?? "",
     lock_targets: lockTargets,
   };

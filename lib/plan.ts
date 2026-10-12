@@ -6,7 +6,10 @@ import { LIMITS, addDays, cleanLockTargets, daysLeft, formatDate, isKind, isReal
 import { getSupabase } from "./supabase";
 
 // 대화와 사진 읽기는 빠른 모델, 계획은 더 깊이 생각하는 모델을 쓴다.
+// 빠른 모델(gpt-6-luna)은 같은 질문을 되풀이해서 쓰지 않는다(2026-10-13 점검).
 const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || "gpt-6-sol";
+// 인증 판정은 정확해야 해서 한 단계 위 모델을 쓴다.
+const JUDGE_MODEL = process.env.OPENAI_JUDGE_MODEL || "gpt-6-sol";
 const PLAN_MODEL = process.env.OPENAI_PLAN_MODEL || "gpt-6.1-sol";
 // 날짜별로 푸는 일은 주마다 따로 여러 번 부르므로 빠른 모델을 쓴다.
 const DAYS_MODEL = process.env.OPENAI_DAYS_MODEL || "gpt-6-luna";
@@ -57,11 +60,12 @@ export type Slots = {
   schedule: string | null;
   daily_minutes: number | null;
   note: string | null;
+  facts: string[]; // 계획에 반영할, 이 사람만의 사정. 대화가 이어질수록 늘어난다
   material_summary: string | null; // 코치가 사진에서 읽은 내용
   lock_targets: string[] | null; // null이면 아직 묻지 않음
 };
 
-export const EMPTY_SLOTS: Slots = { title: null, kind: null, deadline: null, schedule: null, daily_minutes: null, note: null, material_summary: null, lock_targets: null };
+export const EMPTY_SLOTS: Slots = { title: null, kind: null, deadline: null, schedule: null, daily_minutes: null, note: null, facts: [], material_summary: null, lock_targets: null };
 
 export type ChatMessage = { role: "user" | "coach"; text: string };
 export type Ask = "title" | "deadline" | "time" | "note" | "material" | "lock" | "none";
@@ -74,6 +78,7 @@ const TurnSchema = z.object({
   schedule: z.string().nullable().describe("언제 할 수 있는지. 요일, 하루 중 시간대, 그때 낼 수 있는 시간을 사용자가 말한 대로 한 줄로. 예: '평일 밤 9시 이후 1시간, 주말 오전 2시간, 수요일은 못 함'. 모르면 null"),
   daily_minutes: z.number().nullable().describe("보통의 하루에 낼 수 있는 시간(분). 요일마다 다르면 가장 흔한 날 기준. 모르면 null"),
   note: z.string().nullable().describe("지금 수준, 어디까지 했는지, 약한 부분, 쓰는 교재·강의 등 계획에 참고할 상황. 없으면 null"),
+  facts: z.array(z.string()).describe("계획을 이 사람에게 맞추는 데 쓸 사실의 전체 목록. 이미 있던 것을 유지하고 이번 대화에서 새로 알게 된 것을 더한다. 한 항목은 60자 이내의 한 문장. 예: '목표 점수는 850점', '출퇴근 지하철 40분을 쓸 수 있음', '지난번에는 2주차에 야근으로 끊김'. 위 다른 칸에 이미 들어간 내용(목표, 날짜, 시간)은 넣지 않는다"),
   lock_done: z.boolean().describe("사용자가 잠글 앱을 골랐거나 없다고 답했으면 true"),
   ask: z.enum(["title", "deadline", "time", "note", "material", "lock", "none"]).describe("이번 답에서 사용자에게 묻고 있는 것"),
   options: z.array(z.string()).describe("이번 질문에 사용자가 눌러서 바로 답할 수 있는 선택지 2~4개. 각 18자 이내, 사용자가 말하는 투로. ask가 lock, material, none이면 빈 배열"),
@@ -98,6 +103,13 @@ const turnSystem = () => `당신은 Do-er의 코치입니다. 사용자가 해�
 5. 자료 (ask는 material) — 교재 목차나 시험 범위, 강의 목록처럼 사진이 있으면 계획이 실제 단원 이름으로 짜인다고 알려 주고, 입력창 왼쪽 사진 버튼으로 올릴 수 있다고 한 번만 안내합니다. 운동·습관처럼 자료가 필요 없는 목표면 이 단계를 건너뜁니다. "사진에서 읽은 내용"이 아래에 있으면 사진을 이미 받은 것이니 읽은 내용을 한 문장으로 짚어 주고(예: "7단원까지 있네요") 다음으로 갑니다.
 6. 잠글 앱 (ask는 lock) — "잠글 앱: 아직 안 고름"일 때만 묻습니다. "할 일을 하려다 어떤 앱에 손이 가나요?"처럼 묻고, 아래에 뜨는 목록에서 고르면 된다고 알려 줍니다. 고른 앱만 잠기고 전화·메신저·검색은 그대로 열려 있다고 한 문장으로 설명합니다. 앱 이름을 말로 받아 적지 않습니다.
 
+더 깊이 묻기 (ask는 note)
+- 위 여섯 가지는 계획을 짜기 위한 최소한일 뿐입니다. 좋은 계획은 그 사람만의 사정에서 나옵니다. 4번 뒤에, 답에 따라 계획이 실제로 달라지는 것을 두세 가지 더 묻습니다. 목표와 앞선 답을 보고 그때그때 정합니다. 정해진 목록에서 고르지 않습니다.
+  · 예 — 시험: 목표 점수와 지금 점수, 과목별 자신감, 교재를 어디까지 봤는지, 지난번에 왜 밀렸는지, 인강과 문제 풀이 중 무엇이 맞는지 / 운동: 장소와 장비, 아픈 곳, 혼자 하는지 / 작업물: 누구에게 보여 줄 것인지, 지금 막힌 지점, 끝났다고 볼 기준 / 습관: 하루 중 가장 흔들리는 때, 전에 끊긴 이유
+- 사용자가 스스로 말해 준 사정도 놓치지 않고 facts에 담습니다.
+- 사용자가 "이제 짜 줘", "그만 물어봐"라고 하거나 답이 짧아지면 더 묻지 않고 다음으로 갑니다. 깊이 묻는 질문은 많아도 네 번을 넘기지 않습니다.
+- 깊이 묻는 질문에도 options를 줍니다.
+
 규칙
 - 한 번에 하나만 묻습니다. 사용자가 한 문장에 여러 가지를 말하면 모두 알아듣고, 빠진 것만 묻습니다.
 - 질문에는 왜 묻는지가 드러나야 합니다. 예: "남은 날에 맞춰 거꾸로 나누려면 시험일이 필요해요."
@@ -118,6 +130,7 @@ function sanitize(raw: z.infer<typeof TurnSchema>, prev: Slots): Slots {
     schedule: raw.schedule?.trim().slice(0, LIMITS.schedule) || prev.schedule,
     daily_minutes: minutes,
     note: raw.note?.trim().slice(0, LIMITS.note) || prev.note,
+    facts: [...new Set([...prev.facts, ...raw.facts.map((fact) => fact.trim().slice(0, 100)).filter(Boolean)])].slice(0, LIMITS.facts),
     material_summary: prev.material_summary,
     lock_targets: prev.lock_targets ? cleanLockTargets(prev.lock_targets) : null,
   };
@@ -158,7 +171,7 @@ export async function readMaterial(imageDataUrl: string): Promise<string | null>
   if (!isAiConfigured() || !(await underLimit("read"))) return null;
   try {
     const response = await ai().chat.completions.create({
-      model: CHAT_MODEL,
+      model: JUDGE_MODEL,
       reasoning_effort: "low",
       max_completion_tokens: 2500,
       messages: [
@@ -171,10 +184,10 @@ export async function readMaterial(imageDataUrl: string): Promise<string | null>
       ],
     });
     const text = response.choices[0]?.message.content?.trim() || null;
-    await logRun("read", Boolean(text), null, CHAT_MODEL, response.usage);
+    await logRun("read", Boolean(text), null, JUDGE_MODEL, response.usage);
     return text ? text.slice(0, LIMITS.summary) : null;
   } catch (error) {
-    await logRun("read", false, null, CHAT_MODEL, null);
+    await logRun("read", false, null, JUDGE_MODEL, null);
     failureMessage(error, "");
     return null;
   }
@@ -233,6 +246,7 @@ const OUTLINE_SYSTEM = `당신은 Do-er의 코치입니다. 사용자의 목표�
 - 날짜가 정해진 목표: 마지막 주는 새 내용보다 점검과 복습에 씁니다.
 - 날짜를 정하지 않은 목표: 하루 분량으로 끝까지 가는 데 필요한 주 수를 어림합니다.
 - 매주 반복하는 목표: 한 주의 반복 흐름을 정하고 주마다 조금씩 늘립니다.
+- "이 사람만의 사정"에 적힌 것은 하나도 흘리지 않습니다. 각 항목이 계획의 어디에 반영됐는지 basis나 주별 이유(why)에 드러나야 합니다.
 - basis는 사용자가 "왜 이렇게 짰지?"라고 물었을 때의 답입니다. 숫자로 계산한 것을 보여 줍니다. 예: "오늘부터 시험 전날까지 34일, 평일 1시간·주말 2시간이면 모두 약 44시간이에요."
 - assumptions에는 사용자가 말하지 않아 스스로 정한 것을 솔직하게 적습니다. 예: "기출문제집을 갖고 있다고 보고 짰어요."
 ${COMMON_RULES}`;
@@ -266,6 +280,7 @@ function describe(goal: Goal, start: string) {
   lines.push(`보통의 하루에 낼 수 있는 시간: ${goal.daily_minutes}분`);
   lines.push(`언제 할 수 있는지: ${goal.schedule || "(따로 말하지 않음. 매일 위 시간만큼으로 봅니다)"}`);
   lines.push(`지금 상황: ${goal.note || "(말하지 않음)"}`);
+  lines.push(`이 사람만의 사정 (계획에 반드시 반영):\n${goal.context || "(더 들은 것 없음)"}`);
   lines.push(`올린 자료에서 읽은 내용:\n${goal.material_summary || "(자료 없음)"}`);
   return lines.join("\n");
 }
@@ -410,7 +425,7 @@ export async function verifyProof(goal: Pick<Goal, "id" | "title">, task: PlanTa
   if (!(await underLimit("verify"))) return { ok: false, message: "오늘 준비된 인증 확인 횟수를 모두 썼어요. 내일 다시 시도해 주세요." };
   try {
     const response = await ai().chat.completions.parse({
-      model: CHAT_MODEL,
+      model: JUDGE_MODEL,
       reasoning_effort: "low",
       max_completion_tokens: 2000,
       messages: [
@@ -438,11 +453,11 @@ export async function verifyProof(goal: Pick<Goal, "id" | "title">, task: PlanTa
     });
     const choice = response.choices[0];
     const parsed = choice?.finish_reason === "stop" ? choice.message.parsed : null;
-    await logRun("verify", Boolean(parsed), goal.id, CHAT_MODEL, response.usage);
+    await logRun("verify", Boolean(parsed), goal.id, JUDGE_MODEL, response.usage);
     if (!parsed) return { ok: false, message: "코치가 사진을 확인하지 못했어요. 다시 올려 주세요." };
     return { ok: true, passed: parsed.passed, reason: parsed.reason.trim().slice(0, 300) };
   } catch (error) {
-    await logRun("verify", false, goal.id, CHAT_MODEL, null);
+    await logRun("verify", false, goal.id, JUDGE_MODEL, null);
     return { ok: false, message: failureMessage(error, "사진을 확인하는 중 문제가 생겼어요. 잠시 후 다시 올려 주세요.") };
   }
 }
@@ -460,7 +475,7 @@ export async function makeQuiz(goal: Goal, task: PlanTask): Promise<{ ok: true; 
   if (!(await underLimit("verify"))) return { ok: false, message: "오늘 준비된 인증 확인 횟수를 모두 썼어요. 내일 다시 시도해 주세요." };
   try {
     const response = await ai().chat.completions.parse({
-      model: CHAT_MODEL,
+      model: JUDGE_MODEL,
       reasoning_effort: "low",
       max_completion_tokens: 2000,
       messages: [
@@ -479,10 +494,10 @@ export async function makeQuiz(goal: Goal, task: PlanTask): Promise<{ ok: true; 
     });
     const parsed = response.choices[0]?.finish_reason === "stop" ? response.choices[0].message.parsed : null;
     const questions = (parsed?.questions ?? []).map((question) => question.trim().slice(0, 120)).filter(Boolean).slice(0, 3);
-    await logRun("verify", questions.length === 3, goal.id, CHAT_MODEL, response.usage);
+    await logRun("verify", questions.length === 3, goal.id, JUDGE_MODEL, response.usage);
     return questions.length === 3 ? { ok: true, questions } : { ok: false, message: "코치가 문제를 만들지 못했어요. 다시 시도해 주세요." };
   } catch (error) {
-    await logRun("verify", false, goal.id, CHAT_MODEL, null);
+    await logRun("verify", false, goal.id, JUDGE_MODEL, null);
     return { ok: false, message: failureMessage(error, "문제를 만드는 중 문제가 생겼어요. 잠시 후 다시 시도해 주세요.") };
   }
 }
@@ -497,7 +512,7 @@ export async function judgeAnswer(goal: Goal, task: PlanTask, kind: "quiz" | "wr
       : "사용자가 오늘 한 것을 자기 말로 적었습니다. 그 과제에서 다루는 내용이 구체적으로 드러나고 '인증 안내'가 요구한 것이 담겨 있으면 통과입니다. 과제 제목을 되풀이하거나 '열심히 했다'처럼 누구나 쓸 수 있는 말뿐이면 통과시키지 않고, 무엇을 더 적어야 하는지 알려 줍니다.";
   try {
     const response = await ai().chat.completions.parse({
-      model: CHAT_MODEL,
+      model: JUDGE_MODEL,
       reasoning_effort: "low",
       max_completion_tokens: 2000,
       messages: [
@@ -513,11 +528,11 @@ ${rule}
       response_format: zodResponseFormat(VerdictSchema, "verdict"),
     });
     const parsed = response.choices[0]?.finish_reason === "stop" ? response.choices[0].message.parsed : null;
-    await logRun("verify", Boolean(parsed), goal.id, CHAT_MODEL, response.usage);
+    await logRun("verify", Boolean(parsed), goal.id, JUDGE_MODEL, response.usage);
     if (!parsed) return { ok: false, message: "코치가 답을 확인하지 못했어요. 다시 보내 주세요." };
     return { ok: true, passed: parsed.passed, reason: parsed.reason.trim().slice(0, 300) };
   } catch (error) {
-    await logRun("verify", false, goal.id, CHAT_MODEL, null);
+    await logRun("verify", false, goal.id, JUDGE_MODEL, null);
     return { ok: false, message: failureMessage(error, "답을 확인하는 중 문제가 생겼어요. 잠시 후 다시 보내 주세요.") };
   }
 }
@@ -551,7 +566,7 @@ export async function suggestAdjustments(input: AdjustInput, reason: string): Pr
     .join("\n\n");
   try {
     const response = await ai().chat.completions.parse({
-      model: CHAT_MODEL,
+      model: JUDGE_MODEL,
       reasoning_effort: "low",
       max_completion_tokens: 3000,
       messages: [
@@ -577,7 +592,7 @@ export async function suggestAdjustments(input: AdjustInput, reason: string): Pr
       response_format: zodResponseFormat(AdjustSchema, "adjust"),
     });
     const parsed = response.choices[0]?.finish_reason === "stop" ? response.choices[0].message.parsed : null;
-    await logRun("adjust", Boolean(parsed), null, CHAT_MODEL, response.usage);
+    await logRun("adjust", Boolean(parsed), null, JUDGE_MODEL, response.usage);
     if (!parsed) return { ok: false, message: "코치가 조정안을 만들지 못했어요. 다시 말해 주세요." };
     const options = parsed.options
       .map((option) => ({ label: option.label.trim().slice(0, 40), impact: option.impact.trim().slice(0, 200), moves: option.moves, drops: option.drops }))
@@ -586,7 +601,7 @@ export async function suggestAdjustments(input: AdjustInput, reason: string): Pr
     if (!options.length) return { ok: false, message: "코치가 조정안을 만들지 못했어요. 다시 말해 주세요." };
     return { ok: true, reply: parsed.reply.trim(), options };
   } catch (error) {
-    await logRun("adjust", false, null, CHAT_MODEL, null);
+    await logRun("adjust", false, null, JUDGE_MODEL, null);
     return { ok: false, message: failureMessage(error, "조정안을 만드는 중 문제가 생겼어요. 잠시 후 다시 말해 주세요.") };
   }
 }

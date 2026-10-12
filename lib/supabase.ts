@@ -30,8 +30,9 @@ export const getSupabase = cache(async () => {
 
 export const getUser = cache(async () => {
   if (!isConfigured()) return null;
-  const { data } = await (await getSupabase()).auth.getUser();
-  return data.user;
+  // 요청마다 인증 서버를 다시 부르지 않는다. 데이터는 RLS가 토큰을 검증해 지킨다.
+  const { data } = await (await getSupabase()).auth.getSession();
+  return data.session?.user ?? null;
 });
 
 // 저장소는 비공개라, 볼 때마다 잠깐 쓸 수 있는 주소를 만든다.
@@ -41,10 +42,23 @@ export async function signedUrl(path: string | null) {
   return data?.signedUrl ?? null;
 }
 
-export const GOAL_COLUMNS = "id,title,kind,deadline,daily_minutes,schedule,note,material_path,material_summary,plan,plan_status,plan_generated_at,created_at,updated_at";
+const BASE_COLUMNS = "id,title,kind,deadline,daily_minutes,schedule,note,material_path,material_summary,plan,plan_status,plan_generated_at,created_at,updated_at";
+
+// context 칸은 나중에 더한 것이라(supabase/migrations), 아직 없는 DB에서도 앱이 돌게 한 번 확인해 둔다.
+let contextReady: Promise<boolean> | null = null;
+export function hasContext() {
+  contextReady ??= (async () => {
+    const { error } = await (await getSupabase()).from("goals").select("context").limit(1);
+    if (error && error.code !== "42703") contextReady = null; // 다른 이유의 실패는 다음에 다시 확인한다.
+    return !error;
+  })();
+  return contextReady;
+}
+export const goalColumns = async () => ((await hasContext()) ? `${BASE_COLUMNS},context` : BASE_COLUMNS);
 
 export async function listGoals({ page, q, kind }: { page: number; q: string; kind: KindFilter }) {
   const supabase = await getSupabase();
+  const columns = await goalColumns();
   const from = (page - 1) * PAGE_SIZE;
   // PostgREST 필터 문법에 쓰이는 문자는 검색어에서 뺀다.
   const term = q.replace(/[,()%*\\"]/g, " ").trim();
@@ -54,7 +68,7 @@ export async function listGoals({ page, q, kind }: { page: number; q: string; ki
     if (term) query = query.ilike("title", `%${term}%`);
     return query;
   };
-  const { data, count, error } = await filtered(GOAL_COLUMNS)
+  const { data, count, error } = await filtered(columns)
     .order("created_at", { ascending: false })
     .range(from, from + PAGE_SIZE - 1);
   if (!error) return { goals: (data ?? []) as unknown as Goal[], total: count ?? 0 };
@@ -67,13 +81,13 @@ export async function listGoals({ page, q, kind }: { page: number; q: string; ki
 
 // 오늘 화면용: 계획이 준비된 목표를 최근 것부터 가져온다.
 export async function listPlannedGoals(limit = 12) {
-  const { data, error } = await (await getSupabase()).from("goals").select(GOAL_COLUMNS).eq("plan_status", "ready").order("created_at", { ascending: false }).limit(limit);
+  const { data, error } = await (await getSupabase()).from("goals").select(await goalColumns()).eq("plan_status", "ready").order("created_at", { ascending: false }).limit(limit);
   if (error) throw new Error(`오늘 할 일 조회 실패: ${error.message}`);
   return ((data ?? []) as unknown as Goal[]).filter((goal) => goal.plan?.days);
 }
 
 export async function getGoal(id: string) {
-  const { data, error } = await (await getSupabase()).from("goals").select(GOAL_COLUMNS).eq("id", id).maybeSingle();
+  const { data, error } = await (await getSupabase()).from("goals").select(await goalColumns()).eq("id", id).maybeSingle();
   if (error) throw new Error(`상세 조회 실패: ${error.message}`);
   return data as unknown as Goal | null;
 }

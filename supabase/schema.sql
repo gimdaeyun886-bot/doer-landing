@@ -22,6 +22,7 @@ create table public.goals (
   daily_minutes     integer not null check (daily_minutes between 10 and 600),
   schedule          text check (schedule is null or char_length(schedule) <= 120),  -- 언제 할 수 있는지
   note              text check (note is null or char_length(note) <= 300),
+  context           text check (context is null or char_length(context) <= 1500),  -- 대화에서 코치가 더 알게 된 사정
   material_path     text,   -- 저장소 안의 파일 경로 (사용자 id/materials/…)
   material_summary  text,   -- 코치가 사진에서 읽은 내용
   plan              jsonb,  -- AI가 만든 계획: { summary, basis[], assumptions[], weeks[], days[] }

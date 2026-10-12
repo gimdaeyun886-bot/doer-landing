@@ -1,4 +1,4 @@
-import { DeleteGoalButton, ReplanButton } from "@/components/GoalActions";
+import { ClearChat, DeleteGoalButton, ReplanButton } from "@/components/GoalActions";
 import { PlanCalendar } from "@/components/PlanCalendar";
 import { ButtonLink, CoachLine, Icon, NavButton, Notice, Pill, kindTone } from "@/components/ui";
 import { adjustmentRule, formatDate, formatDateTime, formatMinutes, goalTag, lockLabels, planEnd, type Goal, type Proof } from "@/lib/goals";
@@ -25,6 +25,7 @@ export function GoalDetail({ goal, today, notice, materialSrc, lockTargets, proo
         <NavButton href="/goals" icon="chevL" label="내 목표로" />
         <DeleteGoalButton action={remove} title={goal.title} />
       </div>
+      {(notice === "created" || notice === "created-noplan") && <ClearChat />}
       {notice && NOTICES[notice] && <Notice tone={NOTICES[notice].tone}>{NOTICES[notice].text}</Notice>}
 
       <header className="detail-head">

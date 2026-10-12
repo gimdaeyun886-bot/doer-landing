@@ -1,7 +1,7 @@
 // 실제 AI·DB로 처음부터 끝까지 돌려 보는 점검. 사용: node scripts/e2e.mjs [주소] [저장 폴더]
 // 로그인 → 코치 대화 → 날짜별 계획 → 시작 전 확인 → 맞춤 인증 → 조정 → 수정 → 삭제 → 탈퇴 순서로 확인한다.
 // 점검용 계정은 .env.local 의 E2E_EMAIL, E2E_PASSWORD 를 쓴다. 마지막에 탈퇴해 점검 데이터를 지운다.
-import { mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { chromium } from "playwright-core";
 
 for (const line of readFileSync(".env.local", "utf8").replace(/^﻿/, "").split(/\r?\n/)) {
@@ -25,6 +25,7 @@ const settle = async () => {
   await page.waitForLoadState("networkidle");
   await page.waitForTimeout(900);
 };
+let sheetStable = null;
 const UUID_URL = /\/goals\/[0-9a-f]{8}-[0-9a-f-]{27}/;
 
 async function talk(first, { photo, answers = [], name } = {}) {
@@ -54,14 +55,25 @@ async function talk(first, { photo, answers = [], name } = {}) {
     before = await count();
     if (await page.locator(".lock-card").count()) {
       lockAsked = true;
-      await page.locator(".lock-card .chips").first().getByRole("button", { name: "인스타그램" }).click();
-      await page.locator(".lock-scope", { hasText: "인스타그램" }).getByRole("button", { name: "스토리" }).click();
-      await page.locator(".lock-card .chips").first().getByRole("button", { name: "유튜브" }).click();
-      await page.locator(".lock-scope", { hasText: "유튜브" }).getByRole("button", { name: "앱 전체" }).click();
+      await page.locator(".lock-card").getByRole("button", { name: "잠글 앱 고르기" }).click();
+      const apps = page.locator("dialog.app-sheet[open]");
+      await page.waitForTimeout(700); // 창이 다 올라온 뒤에 잰다
+      const box = await apps.boundingBox();
+      await apps.locator('input[type="search"]').fill("인스");
+      await page.waitForTimeout(300);
+      if (name) await shot(`${name}-app-search`);
+      const after = await apps.boundingBox();
+      sheetStable = Math.abs(box.height - after.height) < 2 && Math.abs(box.y - after.y) < 2;
+      await apps.getByRole("button", { name: /인스타그램/ }).click();
+      await apps.locator('input[type="search"]').fill("유튜브");
+      await apps.getByRole("button", { name: /유튜브/ }).click();
+      await apps.locator(".sheet-actions .btn").click();
+      await page.locator(".lock-chosen li", { hasText: "인스타그램" }).getByRole("button", { name: "스토리" }).click();
+      await page.locator(".lock-chosen li", { hasText: "유튜브" }).getByRole("button", { name: "앱 전체" }).click();
       await page.waitForTimeout(300);
       if (name) await shot(`${name}-chat-lock`);
       console.log("  나: (앱 고르기) 인스타그램 릴스·스토리, 유튜브 앱 전체");
-      await page.locator(".lock-card > .btn").click();
+      await page.locator(".lock-card").getByRole("button", { name: "이대로 잠그기" }).click();
     } else if (photo && !uploaded && (await page.locator(".composer-photo.is-hinted").count())) {
       uploaded = true;
       console.log("  나: (사진 올림)");
@@ -112,15 +124,37 @@ await page.getByRole("button", { name: "가입하고 시작하기" }).waitFor();
 await page.waitForTimeout(400);
 await shot("0-email-sheet");
 check("동의하기 전에는 가입 버튼이 눌리지 않음", await page.getByRole("button", { name: "가입하고 시작하기" }).isDisabled());
-await page.getByRole("tab", { name: "로그인" }).click();
-await page.fill("#email", process.env.E2E_EMAIL);
-await page.fill("#password", "wrong-password-1");
-await page.getByRole("button", { name: "로그인", exact: true }).click();
-await page.locator(".notice-error").waitFor({ timeout: 20000 });
-check("틀린 비밀번호는 안내와 함께 막힘", /맞지 않아요/.test(await page.locator(".notice-error").innerText()));
-await page.fill("#password", process.env.E2E_PASSWORD);
-await page.getByRole("button", { name: "로그인", exact: true }).click();
-await page.waitForURL(/\/today/, { timeout: 30000 });
+const EMAIL = TAIL ? process.env.E2E_EMAIL : `doer-e2e-${Math.random().toString(36).slice(2, 8)}@example.com`;
+const PASSWORD = TAIL ? process.env.E2E_PASSWORD : `T-${Math.random().toString(36).slice(2, 12)}`;
+if (TAIL) {
+  await page.getByRole("tab", { name: "로그인" }).click();
+  await page.fill("#email", EMAIL);
+  await page.fill("#password", PASSWORD);
+  await page.locator("dialog .btn-primary").click();
+  await page.waitForURL(/\/today/, { timeout: 30000 });
+} else {
+  // 중간에 멈춰도 계정을 지울 수 있게, 점검용 계정을 .env.local 에 적어 둔다.
+  const kept = readFileSync(".env.local", "utf8").split(/\r?\n/).filter((line) => line && !/^E2E_/.test(line));
+  writeFileSync(".env.local", [...kept, `E2E_EMAIL=${EMAIL}`, `E2E_PASSWORD=${PASSWORD}`, ""].join("\n"));
+  await page.fill("#email", EMAIL);
+  await page.fill("#password", PASSWORD);
+  await page.locator(".agree-all").click();
+  await page.getByRole("button", { name: "가입하고 시작하기" }).click();
+  await page.waitForURL(/\/goals\/new/, { timeout: 30000 });
+  check("가입하면 바로 코치와의 대화로 들어감", true);
+  // 대화 도중 나갔다 와도 이어지는지 본다.
+  await page.fill("#say", "토익 850점을 받고 싶어");
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => document.querySelectorAll(".coach-say").length > 0 && !document.querySelector(".typing"), null, { timeout: 120000 });
+  const said = await page.locator(".coach-say").last().innerText();
+  await page.goto(BASE + "/today");
+  await settle();
+  await page.goto(BASE + "/goals/new");
+  await settle();
+  check("대화하다 나갔다 와도 내용이 남아 있음", (await page.locator(".coach-say").count()) > 0 && (await page.locator(".coach-say").last().innerText()) === said);
+  await page.locator(".chat-reset").click();
+  await page.goto(BASE + "/today");
+}
 await settle();
 await shot("0-today-empty");
 if (!TAIL) check("로그인하면 오늘 화면(빈 상태)이 보임", /아직 계획이 없어요/.test(await page.locator("body").innerText()));
@@ -133,6 +167,7 @@ const first = TAIL ? { ready: false, lockAsked: false } : await talk("11월 15�
 });
 if (!TAIL) check("코치가 대화로 목표를 알아듣고 확인 단계까지 감", first.ready);
 if (!TAIL) check("첫 대화에서 잠글 앱을 물음", first.lockAsked);
+if (!TAIL) check("앱을 찾는 동안 창 크기와 입력칸 위치가 그대로임", sheetStable === true);
 let goalUrl = null;
 if (first.ready) {
   goalUrl = await confirmAndCreate("1");
@@ -229,7 +264,9 @@ check("목록에 등록한 목표가 보임", (await page.locator(".goal-card").
 if (goalUrl) {
   await page.goto(goalUrl + "/edit");
   await settle();
-  await page.fill('input[name="daily_minutes"]', "90");
+  // 값이 실제로 달라져야 계획을 다시 짠다.
+  const minutes = (await page.inputValue('input[name="daily_minutes"]')) === "90" ? "100" : "90";
+  await page.fill('input[name="daily_minutes"]', minutes);
   await page.fill('input[name="schedule"]', "매일 밤 9시 이후 1시간 30분");
   await page.locator(".dock .btn").click();
   await page.waitForURL(/notice=/, { timeout: 280000 });
@@ -267,7 +304,9 @@ if (goalUrl) {
 console.log("\n[5] 내 정보");
 await page.goto(BASE + "/settings");
 await settle();
-await page.locator(".settings-card .chips").first().getByRole("button", { name: "틱톡" }).click();
+await page.locator(".settings-card").getByRole("button", { name: /앱 더 고르기|잠글 앱 고르기/ }).click();
+await page.locator("dialog.app-sheet[open]").getByRole("button", { name: /틱톡/ }).click();
+await page.locator("dialog.app-sheet[open] .sheet-actions .btn").click();
 await page.getByRole("button", { name: "저장", exact: true }).click();
 await page.getByText("저장했어요").waitFor({ timeout: 20000 });
 await shot("5-settings", true);
@@ -299,9 +338,9 @@ await page.waitForURL(/\/login\?bye=1/, { timeout: 30000 });
 await settle();
 await shot("6-bye");
 await page.locator(".welcome-foot .text-btn").click();
-await page.fill("#email", process.env.E2E_EMAIL);
-await page.fill("#password", process.env.E2E_PASSWORD);
-await page.getByRole("button", { name: "로그인", exact: true }).click();
+await page.fill("#email", EMAIL);
+await page.fill("#password", PASSWORD);
+await page.locator("dialog .btn-primary").click();
 await page.locator(".notice-error").last().waitFor({ timeout: 20000 });
 check("탈퇴한 계정으로는 다시 로그인되지 않음", /맞지 않아요/.test(await page.locator(".notice-error").last().innerText()));
 

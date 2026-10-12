@@ -53,6 +53,9 @@ export function ConfirmForm({ action, initial, today, mode, initialFile, current
         <Row id="note" label="지금 상황" optional error={errors.note}>
           <textarea id="note" name="note" rows={2} defaultValue={values.note} maxLength={LIMITS.note} placeholder="지금 수준, 약한 부분, 쓰는 교재나 강의" aria-invalid={Boolean(errors.note)} aria-describedby={errors.note ? "note-error" : undefined} />
         </Row>
+        <Row id="context" label="코치가 더 알게 된 것" optional error={errors.context}>
+          <textarea id="context" name="context" rows={3} defaultValue={values.context} maxLength={LIMITS.context} placeholder="계획에 꼭 반영할 사정을 한 줄에 하나씩 적어요" aria-invalid={Boolean(errors.context)} aria-describedby={errors.context ? "context-error" : undefined} />
+        </Row>
         <MaterialRow serverError={errors.material} file={file} onFile={setFile} currentMaterialUrl={currentMaterialUrl} />
         {/* 대화에서 코치가 읽은 사진과 같은 사진일 때만 읽은 내용을 함께 보낸다. */}
         <input type="hidden" name="material_summary" value={file && file === initialFile ? values.material_summary : ""} />

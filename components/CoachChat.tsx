@@ -8,17 +8,20 @@ import { ConfirmForm } from "./ConfirmForm";
 import { LockPicker } from "./LockPicker";
 import { Button, CoachMark, Icon, NavButton, Symbol } from "./ui";
 
-const EMPTY: Slots = { title: null, kind: null, deadline: null, schedule: null, daily_minutes: null, note: null, material_summary: null, lock_targets: null };
+const EMPTY: Slots = { title: null, kind: null, deadline: null, schedule: null, daily_minutes: null, note: null, facts: [], material_summary: null, lock_targets: null };
 const EXAMPLES = ["11월 15일 정보처리기사 실기, 평일 밤 1시간", "주 3회 아침 30분 달리기를 습관으로", "미뤄 둔 포트폴리오, 이번 달 안에"];
 const HOW = [
   { icon: "chat", title: "말하면 계획을 짜요", text: "끝나는 날까지 날짜별로" },
   { icon: "today", title: "매일 오늘 몫만", text: "자정까지 끝낼 한두 가지" },
   { icon: "lock", title: "고른 앱이 잠겨요", text: "전화·메신저·검색은 열려 있어요" },
-  { icon: "camera", title: "인증하면 열려요", text: "코치가 사진을 보고 확인해요" },
+  { icon: "camera", title: "인증하면 열려요", text: "과제에 맞는 방법으로 확인해요" },
 ] as const;
 const SEEN_KEY = "doer.chatted";
+// 대화 도중 다른 화면에 다녀와도 이어서 할 수 있게, 이 기기에 대화를 적어 둔다. 목표를 만들면 지운다.
+export const CHAT_KEY = "doer.chat.v2";
 
 type Item = ChatMessage & { image?: string; problem?: boolean };
+type Saved = { items: Item[]; slots: Slots; ask: Ask; options: string[]; ready: boolean; hadPhoto: boolean };
 
 function toValues(slots: Slots): GoalValues {
   return {
@@ -29,38 +32,64 @@ function toValues(slots: Slots): GoalValues {
     daily_minutes: slots.daily_minutes ? String(slots.daily_minutes) : "",
     schedule: slots.schedule ?? "",
     note: slots.note ?? "",
+    context: slots.facts.join("\n"),
     material_summary: slots.material_summary ?? "",
     lock_targets: slots.lock_targets ?? [],
   };
 }
 
-// 첫 만남. 코치와 자유롭게 대화하며 목표를 정하고, 마지막에 확인 장에서 한 번 확인한다.
+// 코치와 자유롭게 대화하며 목표와 사정을 알려 주고, 마지막에 확인 장에서 한 번 확인한다.
 // savedLocks: 이미 골라 둔 잠글 앱. 있으면 코치가 다시 묻지 않는다.
 export function CoachChat({ today, savedLocks }: { today: string; savedLocks: string[] }) {
+  const fresh: Slots = { ...EMPTY, lock_targets: savedLocks.length ? savedLocks : null };
   const [items, setItems] = useState<Item[]>([]);
-  const [slots, setSlots] = useState<Slots>({ ...EMPTY, lock_targets: savedLocks.length ? savedLocks : null });
+  const [slots, setSlots] = useState<Slots>(fresh);
   const [ask, setAsk] = useState<Ask>("title");
   const [options, setOptions] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
   const [broken, setBroken] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [hadPhoto, setHadPhoto] = useState(false);
   const [text, setText] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const [firstTime, setFirstTime] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [restored, setRestored] = useState(false);
   const [pending, startTransition] = useTransition();
   const end = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
+  // 처음 열 때: 하던 대화가 있으면 이어서 보여 준다.
   useEffect(() => {
-    // 서비스 소개와 예시 문장은 처음 쓰는 사람에게만 보여 준다.
     try {
       setFirstTime(!localStorage.getItem(SEEN_KEY));
+      const saved = JSON.parse(localStorage.getItem(CHAT_KEY) ?? "null") as Saved | null;
+      if (saved?.items?.length) {
+        setItems(saved.items);
+        setSlots({ ...fresh, ...saved.slots, lock_targets: saved.slots.lock_targets ?? fresh.lock_targets });
+        setAsk(saved.ask);
+        setOptions(saved.options ?? []);
+        setReady(Boolean(saved.ready));
+        setHadPhoto(Boolean(saved.hadPhoto));
+      }
     } catch {
       setFirstTime(true);
     }
+    setRestored(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 대화가 달라질 때마다 적어 둔다. 사진 자체는 저장하지 않고, 코치가 읽은 내용만 남는다.
+  useEffect(() => {
+    if (!restored) return;
+    try {
+      const clean = items.filter((item) => !item.problem).map(({ role, text }) => ({ role, text }));
+      if (clean.length) localStorage.setItem(CHAT_KEY, JSON.stringify({ items: clean, slots, ask, options, ready, hadPhoto } satisfies Saved));
+      else localStorage.removeItem(CHAT_KEY);
+    } catch {}
+  }, [restored, items, slots, ask, options, ready, hadPhoto]);
+
   useEffect(() => {
     end.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [items, pending, ready, picked]);
@@ -73,6 +102,7 @@ export function CoachChat({ today, savedLocks }: { today: string; savedLocks: st
     setText("");
     setPicked([]);
     setOptions([]);
+    setBroken(false);
     try {
       localStorage.setItem(SEEN_KEY, "1");
     } catch {}
@@ -108,7 +138,20 @@ export function CoachChat({ today, savedLocks }: { today: string; savedLocks: st
       return;
     }
     setFile(chosen);
+    setHadPhoto(true);
     send("자료 사진을 올렸어요.", chosen);
+  }
+
+  function restart() {
+    setItems([]);
+    setSlots(fresh);
+    setAsk("title");
+    setOptions([]);
+    setReady(false);
+    setBroken(false);
+    setFile(null);
+    setHadPhoto(false);
+    setPicked([]);
   }
 
   if (confirming) {
@@ -129,12 +172,14 @@ export function CoachChat({ today, savedLocks }: { today: string; savedLocks: st
   }
 
   const started = items.length > 0;
-  const steps = [Boolean(slots.title), Boolean(slots.kind && (slots.kind !== "dated" || slots.deadline)), Boolean(slots.daily_minutes), Boolean(slots.lock_targets)];
-  const done = steps.filter(Boolean).length;
+  // 계획을 짤 수 있는 최소한을 알았는지. 그 뒤로는 사용자가 언제든 대화를 끝내고 넘어갈 수 있다.
+  const enough = Boolean(slots.title && slots.kind && (slots.kind !== "dated" || slots.deadline) && slots.daily_minutes && slots.lock_targets);
   const known = [
     slots.title && ["목표", slots.title],
     slots.kind && ["기한", slots.kind === "dated" ? (slots.deadline ? formatDate(slots.deadline) : "날짜 있음") : KINDS.find((kind) => kind.value === slots.kind)!.short],
     slots.daily_minutes && ["시간", slots.schedule || `하루 ${formatMinutes(slots.daily_minutes)}`],
+    slots.note && ["상황", slots.note],
+    ...slots.facts.map((fact) => ["사정", fact]),
     slots.lock_targets && ["잠금", slots.lock_targets.length ? lockLabels(slots.lock_targets).join(" · ") : "없음"],
   ].filter(Boolean) as [string, string][];
   const lastIsCoach = started && items[items.length - 1].role === "coach";
@@ -147,25 +192,23 @@ export function CoachChat({ today, savedLocks }: { today: string; savedLocks: st
         {started && <CoachMark />}
         <div>
           <p className="chat-name">코치</p>
-          <p className="chat-sub">{started ? (ready ? "다 정리했어요" : `${steps.length}가지 중 ${done}가지를 알았어요`) : "목표를 같이 정해요"}</p>
+          <p className="chat-sub">{!started ? "목표를 같이 정해요" : ready ? "다 정리했어요" : "나가도 대화는 그대로 남아요"}</p>
         </div>
         {started && (
-          <ol className="chat-steps" aria-hidden="true">
-            {steps.map((filled, index) => (
-              <li key={index} data-on={filled} />
-            ))}
-          </ol>
+          <button type="button" className="nav-btn chat-reset" onClick={restart} aria-label="대화를 처음부터 다시 하기">
+            <Icon name="refresh" size={18} />
+          </button>
         )}
       </header>
 
       <div className="chat-body">
-        {!started && (
+        {!started && restored && (
           <div className="hello">
             <span className="hello-mark" aria-hidden="true">
               <Symbol size={64} />
             </span>
             <h1>{"안녕하세요, 코치예요.\n어떤 걸 해내고 싶어요?"}</h1>
-            <p>{"시험, 운동, 책, 미뤄 둔 작업.\n무엇이든 편하게 말해 주세요."}</p>
+            <p>{"시험, 운동, 책, 미뤄 둔 작업.\n사정을 많이 알려 줄수록 계획이 나에게 맞아져요."}</p>
             {firstTime && (
               <ol className="how">
                 {HOW.map((step) => (
@@ -227,8 +270,8 @@ export function CoachChat({ today, savedLocks }: { today: string; savedLocks: st
 
         {lastIsCoach && !pending && ready && known.length > 0 && (
           <dl className="understood under-coach">
-            {known.map(([label, value]) => (
-              <div key={label}>
+            {known.map(([label, value], index) => (
+              <div key={`${label}-${index}`}>
                 <dt>{label}</dt>
                 <dd>{value}</dd>
               </div>
@@ -254,7 +297,7 @@ export function CoachChat({ today, savedLocks }: { today: string; savedLocks: st
             <LockPicker value={picked} onChange={setPicked} />
             <p className="quick-hint">고른 곳만 잠겨요. 전화, 메신저, 검색은 그대로 열려 있어요.</p>
             <Button type="button" variant="soft" disabled={picked.length === 0} onClick={() => send(`${lockLabels(picked).join(", ")} 잠글게요.`, undefined, picked)}>
-              {picked.length ? `${picked.length}곳 잠그기` : "잠글 앱을 골라 주세요"}
+              {picked.length ? "이대로 잠그기" : "잠글 앱을 골라 주세요"}
             </Button>
             <button type="button" className="text-btn" onClick={() => send("잠글 앱은 없어요.", undefined, [])}>
               잠글 앱 없이 할게요
@@ -262,16 +305,30 @@ export function CoachChat({ today, savedLocks }: { today: string; savedLocks: st
           </div>
         )}
 
-        {canAnswer && (ask === "note" || ask === "material") && (
+        {canAnswer && ask === "material" && (
           <div className="quick under-coach">
-            {ask === "material" && (
-              <Button type="button" variant="soft" onClick={() => fileInput.current?.click()}>
-                <Icon name="image" size={18} />
-                사진 올리기
-              </Button>
-            )}
-            <button type="button" className="text-btn" onClick={() => send(ask === "material" ? "자료는 없어요. 넘어갈게요." : "넘어갈게요.")}>
+            <Button type="button" variant="soft" onClick={() => fileInput.current?.click()}>
+              <Icon name="image" size={18} />
+              사진 올리기
+            </Button>
+            <button type="button" className="text-btn" onClick={() => send("자료는 없어요. 넘어갈게요.")}>
               건너뛰기
+            </button>
+          </div>
+        )}
+
+        {canAnswer && ask === "note" && !enough && (
+          <div className="quick under-coach">
+            <button type="button" className="text-btn" onClick={() => send("넘어갈게요.")}>
+              건너뛰기
+            </button>
+          </div>
+        )}
+
+        {canAnswer && enough && ask !== "lock" && (
+          <div className="quick under-coach">
+            <button type="button" className="text-btn" onClick={() => setConfirming(true)}>
+              이 정도면 됐어요, 계획 짜러 가기
             </button>
           </div>
         )}
@@ -281,12 +338,13 @@ export function CoachChat({ today, savedLocks }: { today: string; savedLocks: st
             <Button type="button" onClick={() => setConfirming(true)}>
               {ready ? "확인하러 가기" : "직접 적기"}
             </Button>
+            {hadPhoto && !file && <p className="quick-hint">아까 올린 사진은 코치가 읽은 내용만 남아 있어요. 사진도 함께 저장하려면 다음 화면에서 다시 올려 주세요.</p>}
           </div>
         )}
         <div ref={end} />
       </div>
 
-      {!started && firstTime && (
+      {!started && firstTime && restored && (
         <div className="examples">
           <p>이렇게 말해 볼 수 있어요</p>
           <ul>

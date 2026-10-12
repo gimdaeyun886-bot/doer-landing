@@ -74,22 +74,18 @@ export function TodayView({ goals, today, proofs, lockTargets, started }: Props)
             <i style={{ width: `${(passed / tasks.length) * 100}%` }} />
           </div>
 
-          {!allDone && (
+          {!allDone && !started && (
             <div className="dock">
-              <AdjustButton />
-              {!started && (
-                <>
                   <p className="lock-note">
                     <Icon name="lock" size={15} weight={2} />
                     {lockTargets.length ? `시작하면 잠겨요: ${locks}` : "잠글 앱을 아직 고르지 않았어요"}
                   </p>
                   <StartButton rows={tasks.map(({ task, goal }) => ({ task, goalTitle: goal.title }))} lockTargets={lockTargets} />
-                </>
-              )}
             </div>
           )}
         </>
       )}
+      <AdjustButton show={tasks.length > 0 && !allDone} />
       <TabBar active="today" />
     </div>
   );

@@ -25,7 +25,7 @@ import {
   type Plan,
 } from "@/lib/goals";
 import { EMPTY_SLOTS, coachTurn, generatePlan, judgeAnswer, makeQuiz, readMaterial, suggestAdjustments, toDataUrl, verifyProof, type ChatMessage, type Slots, type TurnResult } from "@/lib/plan";
-import { GOAL_COLUMNS, getSupabase, getUser, isConfigured, listPlannedGoals, saveSettings } from "@/lib/supabase";
+import { getSupabase, goalColumns, hasContext, getUser, isConfigured, listPlannedGoals, saveSettings } from "@/lib/supabase";
 
 const NOT_CONFIGURED = "저장소가 아직 연결되지 않았어요. 환경 변수를 확인해 주세요.";
 const NEED_LOGIN = "로그인이 풀렸어요. 다시 로그인해 주세요.";
@@ -88,15 +88,16 @@ function check(formData: FormData) {
   return { values, errors, file, invalid: Object.keys(errors).length > 0 };
 }
 
-const toRow = (values: GoalValues, materialPath: string | null, materialSummary: string | null) => ({
+const toRow = async (values: GoalValues, materialPath: string | null, materialSummary: string | null) => ({
   title: values.title,
   kind: values.kind,
   deadline: values.kind === "dated" ? values.deadline : null,
   daily_minutes: Number(values.daily_minutes),
   schedule: values.schedule || null,
   note: values.note || null,
+  ...((await hasContext()) ? { context: values.context || null } : {}),
   material_path: materialPath,
-  material_summary: materialPath ? materialSummary : null,
+  material_summary: materialSummary,
 });
 
 // 브라우저가 돌려보낸 대화 상태를 믿지 않고 형태를 다시 맞춘다.
@@ -113,6 +114,7 @@ function cleanSlots(raw: Slots): Slots {
     schedule: text(raw?.schedule, LIMITS.schedule),
     daily_minutes: Number.isFinite(minutes) && minutes > 0 ? Math.round(minutes) : null,
     note: text(raw?.note, LIMITS.note),
+    facts: Array.isArray(raw?.facts) ? raw.facts.map((fact) => String(fact).trim().slice(0, 100)).filter(Boolean).slice(0, LIMITS.facts) : [],
     material_summary: text(raw?.material_summary, LIMITS.summary),
     lock_targets: Array.isArray(raw?.lock_targets) ? cleanLockTargets(raw.lock_targets.map(String)) : null,
   };
@@ -144,8 +146,9 @@ export async function createGoal(prev: FormState, formData: FormData): Promise<F
   if (file && !materialPath) return { attempt, values, errors: { material: UPLOAD_FAILED }, message: UPLOAD_FAILED };
 
   // 대화에서 이미 읽은 내용이 없으면(직접 적은 경우) 여기서 사진을 읽는다.
-  const summary = file ? values.material_summary || (await readMaterial(await toDataUrl(file))) : null;
-  const { data, error } = await (await getSupabase()).from("goals").insert(toRow(values, materialPath, summary)).select(GOAL_COLUMNS).single();
+  // 사진 없이 대화를 이어 온 경우에도, 코치가 전에 읽어 둔 내용은 계획에 쓴다.
+  const summary = file ? values.material_summary || (await readMaterial(await toDataUrl(file))) : values.material_summary || null;
+  const { data, error } = await (await getSupabase()).from("goals").insert(await toRow(values, materialPath, summary)).select(await goalColumns()).single();
   if (error || !data) {
     console.error("goal insert failed:", error?.message);
     await removeFiles([materialPath]);
@@ -168,7 +171,7 @@ export async function updateGoal(id: string, prev: FormState, formData: FormData
   if (!isUuid(id)) return { attempt, values, message: "고칠 목표를 찾지 못했어요." };
 
   const supabase = await getSupabase();
-  const { data: before, error: readError } = await supabase.from("goals").select(GOAL_COLUMNS).eq("id", id).maybeSingle();
+  const { data: before, error: readError } = await supabase.from("goals").select(await goalColumns()).eq("id", id).maybeSingle();
   if (readError) return { attempt, values, message: SAVE_FAILED };
   if (!before) return { attempt, values, message: "이미 지운 목표예요. 목록으로 돌아가 주세요." };
   const current = before as unknown as Goal;
@@ -177,8 +180,8 @@ export async function updateGoal(id: string, prev: FormState, formData: FormData
   if (file && !newPath) return { attempt, values, errors: { material: UPLOAD_FAILED }, message: UPLOAD_FAILED };
   const materialPath = newPath ?? (formData.get("remove_material") === "on" ? null : current.material_path);
 
-  const summary = file ? await readMaterial(await toDataUrl(file)) : current.material_summary;
-  const { data, error } = await supabase.from("goals").update(toRow(values, materialPath, summary)).eq("id", id).select(GOAL_COLUMNS).maybeSingle();
+  const summary = file ? await readMaterial(await toDataUrl(file)) : formData.get("remove_material") === "on" ? null : current.material_summary;
+  const { data, error } = await supabase.from("goals").update(await toRow(values, materialPath, summary)).eq("id", id).select(await goalColumns()).maybeSingle();
   if (error || !data) {
     console.error("goal update failed:", error?.message);
     await removeFiles([newPath]);
@@ -195,6 +198,7 @@ export async function updateGoal(id: string, prev: FormState, formData: FormData
     goal.daily_minutes !== current.daily_minutes ||
     goal.schedule !== current.schedule ||
     goal.note !== current.note ||
+    goal.context !== current.context ||
     goal.material_path !== current.material_path;
   let notice = "updated";
   if (changed || goal.plan_status !== "ready" || !goal.plan?.days) notice = (await planAndSave(goal)) ? "updated-noplan" : "replanned";
@@ -207,7 +211,7 @@ export async function updateGoal(id: string, prev: FormState, formData: FormData
 export async function regeneratePlan(id: string, _prev: { message?: string }, _formData: FormData): Promise<{ message?: string }> {
   if (!isConfigured()) return { message: NOT_CONFIGURED };
   if (!isUuid(id)) return { message: "목표를 찾지 못했어요." };
-  const { data, error } = await (await getSupabase()).from("goals").select(GOAL_COLUMNS).eq("id", id).maybeSingle();
+  const { data, error } = await (await getSupabase()).from("goals").select(await goalColumns()).eq("id", id).maybeSingle();
   if (error || !data) return { message: "목표를 찾지 못했어요." };
 
   const problem = await planAndSave(data as unknown as Goal);
@@ -254,7 +258,7 @@ export async function saveLocks(_prev: { message?: string; saved?: boolean }, fo
 
 async function loadTodayTask(goalId: string, taskId: string) {
   if (!isUuid(goalId)) return null;
-  const { data } = await (await getSupabase()).from("goals").select(GOAL_COLUMNS).eq("id", goalId).maybeSingle();
+  const { data } = await (await getSupabase()).from("goals").select(await goalColumns()).eq("id", goalId).maybeSingle();
   const goal = data as unknown as Goal | null;
   const task = goal ? tasksOn(goal, todayInSeoul()).find((item) => item.id === taskId) : null;
   return goal && task ? { goal, task } : null;
@@ -430,7 +434,7 @@ export async function applyAdjustment(reason: string, option: AdjustOption): Pro
   if (!changed) return { ok: false, message: "적용할 수 있는 내용이 없었어요. 다시 말해 주세요." };
 
   await supabase.from("adjustments").insert({ date: today, reason: String(reason ?? "").slice(0, LIMITS.reason), choice: String(option.label ?? "").slice(0, 40), impact: String(option.impact ?? "").slice(0, 200) });
-  revalidatePath("/today");
+  // 오늘 화면은 사용자가 결과를 확인한 뒤 브라우저 쪽에서 새로 그린다. 여기서 다시 그리면 결과 창이 먼저 사라진다.
   revalidatePath("/goals");
   return { ok: true };
 }

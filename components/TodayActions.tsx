@@ -105,7 +105,8 @@ export function StartButton({ rows, lockTargets }: { rows: Row[]; lockTargets: s
 }
 
 // 버거운 날: 사정을 말하면 코치가 조정안과 대가를 보여 준다. 고르거나, 그대로 하기로 한다.
-export function AdjustButton() {
+// 이 조각은 오늘 할 일이 바뀌어도 화면에서 사라지지 않는 자리에 둔다. 그래야 조정 결과를 끝까지 보여 줄 수 있다.
+export function AdjustButton({ show }: { show: boolean }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const router = useRouter();
   const [reason, setReason] = useState("");
@@ -134,9 +135,11 @@ export function AdjustButton() {
 
   return (
     <>
-      <button type="button" className="text-btn adjust-open" onClick={() => dialog.current?.showModal()}>
-        오늘 계획이 버거워요
-      </button>
+      {show && (
+        <button type="button" className="text-btn adjust-open" onClick={() => dialog.current?.showModal()}>
+          오늘 계획이 버거워요
+        </button>
+      )}
       <dialog ref={dialog} className="sheet adjust-sheet" aria-labelledby="adjust-title" onClose={() => {
         if (done) router.refresh();
         setState({});
