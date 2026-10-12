@@ -37,6 +37,7 @@ const ICONS = {
   quiz: <><circle cx="12" cy="12" r="8.5" /><path d="M9.6 9.6a2.5 2.5 0 1 1 3.6 2.3c-.8.4-1.2 1-1.2 1.8m0 2.6h.01" /></>,
   pen: <path d="M5 19h3.5L19 8.5 15.5 5 5 15.5Zm8.5-12L17 10.5" />,
   user: <><circle cx="12" cy="8.5" r="3.6" /><path d="M5 19.5a7 7 0 0 1 14 0" /></>,
+  mail: <><rect x="3.5" y="5.5" width="17" height="13" rx="3" /><path d="m4.5 8 7.5 5.5L19.5 8" /></>,
   alert: <><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5v5.5m0 3.2h.01" /></>,
 } as const;
 

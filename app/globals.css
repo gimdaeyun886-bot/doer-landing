@@ -565,15 +565,48 @@ button { cursor: pointer; }
 .app-list i { display: grid; place-items: center; flex: none; width: 22px; height: 22px; border: 1.5px solid var(--faint); border-radius: 50%; color: #fff; }
 .app-list button[aria-pressed="true"] i { border-color: var(--coral); background: var(--coral); }
 
-/* ── 구글·카카오 로그인 ── */
-.social { display: grid; gap: 8px; }
-.social .btn { min-height: 54px; font-size: 15px; box-shadow: var(--shadow-soft); }
-.social-google { background: var(--white); color: var(--ink); }
-.social-kakao { background: #fee500; color: #191600; }
-.or { display: flex; align-items: center; gap: 12px; margin-top: 6px; color: var(--faint); font-size: 12px; }
-.or::before, .or::after { content: ""; flex: 1; height: 1px; background: #e6ddd1; }
+/* ── 시작 화면: 위에는 무엇을 하는 앱인지, 아래에는 시작하는 방법 ── */
+.welcome { justify-content: space-between; gap: 24px; padding-top: max(44px, env(safe-area-inset-top)); padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+.welcome-top { display: grid; justify-items: start; padding-inline: 8px; }
+.welcome-top .hello-mark { width: 88px; height: 88px; margin: 0 0 22px; box-shadow: 0 0 0 10px #ffffff80, var(--shadow-lift); }
+.wordmark { color: var(--coral); font-size: 15px; font-weight: 800; letter-spacing: -0.01em; }
+.welcome-top h1 { margin-top: 6px; font-size: 34px; font-weight: 800; line-height: 1.26; letter-spacing: -0.035em; white-space: pre-line; }
+.promises { display: grid; gap: 10px; margin-top: 22px; }
+.promises li { display: flex; align-items: center; gap: 10px; color: #5c5248; font-size: 15px; line-height: 22px; animation: rise 0.5s var(--ease) backwards; }
+.promises li:nth-child(1) { animation-delay: 0.12s; }
+.promises li:nth-child(2) { animation-delay: 0.2s; }
+.promises li:nth-child(3) { animation-delay: 0.28s; }
+.promises .icon { color: var(--coach); }
+.promises li:nth-child(2) .icon { color: var(--coral); }
+.promises li:nth-child(3) .icon { color: var(--green); }
+
+.welcome-actions { display: grid; gap: 10px; }
+.social-btn { position: relative; min-height: 56px; padding-inline: 52px; border: 1px solid transparent; border-radius: 18px; font-size: 16px; font-weight: 600; }
+.social-btn > svg { position: absolute; left: 20px; top: 50%; translate: 0 -50%; }
+.social-btn:disabled { opacity: 0.6; }
+.social-kakao { background: #fee500; color: #191919; }
+.social-google { background: var(--white); border-color: #dadce0; color: #1f1f1f; }
+.social-email { background: #ffffff80; border-color: #fff; color: var(--ink); }
+.welcome-actions .btn-primary { border-radius: 18px; }
+.welcome-foot { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 6px; color: var(--mut); font-size: 14px; }
+.welcome-foot .text-btn { color: var(--ink); }
+.welcome-legal { color: var(--faint); font-size: 12px; line-height: 18px; text-align: center; }
+.welcome-legal a { text-decoration: underline; text-underline-offset: 3px; }
+
+/* 이메일로 가입·로그인하는 창 */
+.email-sheet { max-height: 94dvh; overflow-y: auto; }
+.email-sheet h2 { margin-bottom: 8px; }
+.sheet-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 16px; padding: 4px; border-radius: 16px; background: var(--tint); }
+.sheet-tabs button { height: 38px; border: 0; border-radius: 12px; background: none; color: var(--mut); font-size: 14px; font-weight: 700; transition: background-color 0.2s, color 0.2s; }
+.sheet-tabs button[aria-selected="true"] { background: var(--white); color: var(--ink); box-shadow: 0 1px 3px #73422424; }
+.field-list { display: grid; gap: 10px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.field { display: grid; gap: 2px; padding: 10px 16px; border: 1.5px solid var(--hair); border-radius: 16px; transition: border-color 0.2s; }
+.field:focus-within { border-color: var(--coach); }
+.field label { color: var(--mut); font-size: 12px; font-weight: 600; }
+.field:focus-within label { color: var(--coach); }
+.email-sheet .agree { border-color: var(--hair); background: none; }
+.email-sheet .auth-form { gap: 10px; }
 
 /* 앱 고르기 카드는 넓게 써야 해서 말풍선 들여쓰기를 따르지 않는다. */
-.lock-card.under-coach { margin-left: 0; }
 .quick.under-coach { max-width: calc(100% - 42px); }
-.lock-card.under-coach { max-width: 100%; }
+.lock-card.under-coach { margin-left: 0; max-width: 100%; }
