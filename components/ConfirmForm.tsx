@@ -196,7 +196,7 @@ function LockRow({ selected }: { selected: string[] }) {
         잠글 앱
       </span>
       <LockPicker value={value} onChange={setValue} name="lock" />
-      <p className="row-hint">목표마다가 아니라 한 번 정하면 모든 목표에 똑같이 적용돼요. 고른 앱만 잠기고 전화·메신저·검색은 열려 있어요.</p>
+      <p className="row-hint">한 번 정하면 모든 목표에 똑같이 적용돼요. 고른 곳만 잠기고 전화·메신저·검색은 열려 있어요.</p>
     </div>
   );
 }

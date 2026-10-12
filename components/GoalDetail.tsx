@@ -1,7 +1,7 @@
 import { DeleteGoalButton, ReplanButton } from "@/components/GoalActions";
 import { PlanCalendar } from "@/components/PlanCalendar";
 import { ButtonLink, CoachLine, Icon, NavButton, Notice, Pill, kindTone } from "@/components/ui";
-import { adjustmentRule, formatDate, formatDateTime, formatMinutes, goalTag, planEnd, tasksOn, type Goal, type Proof } from "@/lib/goals";
+import { adjustmentRule, formatDate, formatDateTime, formatMinutes, goalTag, lockLabels, planEnd, type Goal, type Proof } from "@/lib/goals";
 
 type SimpleAction = (prev: { message?: string }, formData: FormData) => Promise<{ message?: string }>;
 
@@ -17,7 +17,6 @@ type Props = { goal: Goal; today: string; notice?: string; materialSrc: string |
 
 export function GoalDetail({ goal, today, notice, materialSrc, lockTargets, proofs, replan, remove }: Props) {
   const plan = goal.plan_status === "ready" && goal.plan?.days ? goal.plan : null;
-  const todayCount = tasksOn(goal, today).length;
   const end = plan ? planEnd(plan) : null;
 
   return (
@@ -43,7 +42,7 @@ export function GoalDetail({ goal, today, notice, materialSrc, lockTargets, proo
           {lockTargets.length > 0 && (
             <span>
               <Icon name="lock" size={14} />
-              {lockTargets.join("·")}
+              {lockLabels(lockTargets).join(" · ")}
             </span>
           )}
         </p>
@@ -154,7 +153,7 @@ export function GoalDetail({ goal, today, notice, materialSrc, lockTargets, proo
       </p>
 
       <div className="dock">
-        {plan && <ButtonLink href="/today">{todayCount ? `오늘 할 일 ${todayCount}가지 보기` : "오늘 화면으로"}</ButtonLink>}
+        {plan && <ButtonLink href="/today">오늘 할 일 보기</ButtonLink>}
         {plan && <ReplanButton action={replan} label="계획 다시 만들기" />}
         <ButtonLink href={`/goals/${goal.id}/edit`} variant="soft">
           목표 고치기

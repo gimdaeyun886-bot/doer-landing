@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { addDays, formatDay, formatMinutes, planEnd, totalMinutes, type Plan } from "@/lib/goals";
+import { VERIFY_TYPES, addDays, formatDay, formatMinutes, planEnd, totalMinutes, verifyTypeOf, type Plan } from "@/lib/goals";
 import { Icon } from "./ui";
 
 const HEAD = ["일", "월", "화", "수", "목", "금", "토"];
@@ -113,13 +113,15 @@ export function PlanCalendar({ plan, today, deadline, passed }: { plan: Plan; to
                       <span>약 {formatMinutes(task.minutes)}</span>
                     </div>
                     <p>{task.detail}</p>
-                    <p className="verify">
-                      <Icon name="camera" size={15} />
+                    <div className="verify">
+                      <Icon name={VERIFY_TYPES[verifyTypeOf(task)].icon} size={15} />
                       <span>
-                        <b>{task.verify_method}</b>
+                        <b>
+                          {VERIFY_TYPES[verifyTypeOf(task)].label} · {task.verify_method}
+                        </b>
                         {task.verify_guide}
                       </span>
-                    </p>
+                    </div>
                   </div>
                 </li>
               ))}

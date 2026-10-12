@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { askCoach, createGoal } from "@/app/goals/actions";
-import { EMPTY_VALUES, KINDS, formatDate, formatMinutes, materialError, type GoalValues } from "@/lib/goals";
+import { EMPTY_VALUES, KINDS, formatDate, formatMinutes, lockLabels, materialError, type GoalValues } from "@/lib/goals";
 import type { Ask, ChatMessage, Slots } from "@/lib/plan";
 import { ConfirmForm } from "./ConfirmForm";
 import { LockPicker } from "./LockPicker";
@@ -65,7 +65,7 @@ export function CoachChat({ today, savedLocks }: { today: string; savedLocks: st
     end.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [items, pending, ready, picked]);
 
-  function send(message: string, photo?: File) {
+  function send(message: string, photo?: File, locks?: string[]) {
     const clean = message.trim();
     if (!clean || pending) return;
     const next: Item[] = [...items, { role: "user", text: clean, image: photo ? URL.createObjectURL(photo) : undefined }];
@@ -83,7 +83,8 @@ export function CoachChat({ today, savedLocks }: { today: string; savedLocks: st
         payload = new FormData();
         payload.set("material", photo);
       }
-      const result = await askCoach(history, slots, payload);
+      // 잠글 앱은 코치가 받아 적지 않고, 고르기 창에서 고른 값을 그대로 쓴다.
+      const result = await askCoach(history, locks ? { ...slots, lock_targets: locks } : slots, payload);
       if (!result.ok) {
         setBroken(true);
         setItems((current) => [...current, { role: "coach", text: result.message, problem: true }]);
@@ -134,7 +135,7 @@ export function CoachChat({ today, savedLocks }: { today: string; savedLocks: st
     slots.title && ["목표", slots.title],
     slots.kind && ["기한", slots.kind === "dated" ? (slots.deadline ? formatDate(slots.deadline) : "날짜 있음") : KINDS.find((kind) => kind.value === slots.kind)!.short],
     slots.daily_minutes && ["시간", slots.schedule || `하루 ${formatMinutes(slots.daily_minutes)}`],
-    slots.lock_targets && ["잠금", slots.lock_targets.length ? slots.lock_targets.join(" · ") : "없음"],
+    slots.lock_targets && ["잠금", slots.lock_targets.length ? lockLabels(slots.lock_targets).join(" · ") : "없음"],
   ].filter(Boolean) as [string, string][];
   const lastIsCoach = started && items[items.length - 1].role === "coach";
   const canAnswer = lastIsCoach && !pending && !ready && !broken;
@@ -183,32 +184,49 @@ export function CoachChat({ today, savedLocks }: { today: string; savedLocks: st
           </div>
         )}
 
-        {items.map((item, index) =>
-          item.role === "user" ? (
-            <div key={index} className="bubble-row">
-              <div className="bubble">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                {item.image && <img src={item.image} alt="올린 사진" />}
-                <p>{item.text}</p>
+        {items.map((item, index) => {
+          if (item.role === "user") {
+            return (
+              <div key={index} className="msg msg-me">
+                <div className="bubble">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {item.image && <img src={item.image} alt="올린 사진" />}
+                  <p>{item.text}</p>
+                </div>
+              </div>
+            );
+          }
+          // 코치가 이어서 말할 때는 프로필을 한 번만 보여 준다.
+          const first = index === 0 || items[index - 1].role !== "coach";
+          return (
+            <div key={index} className={`msg msg-coach${first ? "" : " is-follow"}`}>
+              {first ? <CoachMark size={34} /> : <span className="msg-gap" />}
+              <div>
+                {first && <p className="msg-name">코치</p>}
+                <p className={`bubble coach-say${item.problem ? " is-problem" : ""}`} role={item.problem ? "alert" : undefined}>
+                  {item.text}
+                </p>
               </div>
             </div>
-          ) : (
-            <p key={index} className={`coach-say${item.problem ? " is-problem" : ""}`} role={item.problem ? "alert" : undefined}>
-              {item.text}
-            </p>
-          ),
-        )}
+          );
+        })}
 
         {pending && (
-          <p className="typing" role="status" aria-label="코치가 답을 쓰고 있어요">
-            <i />
-            <i />
-            <i />
-          </p>
+          <div className="msg msg-coach">
+            <CoachMark size={34} />
+            <div>
+              <p className="msg-name">코치</p>
+              <p className="bubble typing" role="status" aria-label="코치가 답을 쓰고 있어요">
+                <i />
+                <i />
+                <i />
+              </p>
+            </div>
+          </div>
         )}
 
         {lastIsCoach && !pending && ready && known.length > 0 && (
-          <dl className="understood">
+          <dl className="understood under-coach">
             {known.map(([label, value]) => (
               <div key={label}>
                 <dt>{label}</dt>
@@ -219,7 +237,7 @@ export function CoachChat({ today, savedLocks }: { today: string; savedLocks: st
         )}
 
         {canAnswer && ask !== "lock" && options.length > 0 && (
-          <div className="quick">
+          <div className="quick under-coach">
             <div className="chips">
               {options.map((option) => (
                 <button key={option} type="button" className="chip-btn option-btn" onClick={() => send(option)}>
@@ -232,20 +250,20 @@ export function CoachChat({ today, savedLocks }: { today: string; savedLocks: st
         )}
 
         {canAnswer && ask === "lock" && (
-          <div className="quick lock-card">
+          <div className="quick lock-card under-coach">
             <LockPicker value={picked} onChange={setPicked} />
-            <p className="quick-hint">고른 앱만 잠겨요. 전화, 메신저, 검색은 그대로 열려 있어요.</p>
-            <Button type="button" variant="soft" disabled={picked.length === 0} onClick={() => send(`${picked.join(", ")} 잠글게요.`)}>
-              {picked.length ? `${picked.join(" · ")} 잠그기` : "잠글 앱을 골라 주세요"}
+            <p className="quick-hint">고른 곳만 잠겨요. 전화, 메신저, 검색은 그대로 열려 있어요.</p>
+            <Button type="button" variant="soft" disabled={picked.length === 0} onClick={() => send(`${lockLabels(picked).join(", ")} 잠글게요.`, undefined, picked)}>
+              {picked.length ? `${picked.length}곳 잠그기` : "잠글 앱을 골라 주세요"}
             </Button>
-            <button type="button" className="text-btn" onClick={() => send("잠글 앱은 없어요.")}>
+            <button type="button" className="text-btn" onClick={() => send("잠글 앱은 없어요.", undefined, [])}>
               잠글 앱 없이 할게요
             </button>
           </div>
         )}
 
         {canAnswer && (ask === "note" || ask === "material") && (
-          <div className="quick">
+          <div className="quick under-coach">
             {ask === "material" && (
               <Button type="button" variant="soft" onClick={() => fileInput.current?.click()}>
                 <Icon name="image" size={18} />
@@ -259,7 +277,7 @@ export function CoachChat({ today, savedLocks }: { today: string; savedLocks: st
         )}
 
         {(ready || broken) && !pending && (
-          <div className="quick">
+          <div className="quick under-coach">
             <Button type="button" onClick={() => setConfirming(true)}>
               {ready ? "확인하러 가기" : "직접 적기"}
             </Button>

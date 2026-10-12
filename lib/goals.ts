@@ -6,9 +6,20 @@ export type PlanTask = {
   title: string;
   detail: string;
   minutes: number; // 참고용 예상 시간
-  verify_method: string; // 이 과제에 맞춰 AI가 고른 인증 방법
+  verify_type: VerifyType; // 이 과제에 맞춰 코치가 고른 인증 방식
+  verify_method: string; // 그 방식의 이름. 예: 채점한 풀이 사진, 핵심 개념 퀴즈
   verify_guide: string;
 };
+
+// 맞춤 인증. 과제의 성격에 따라 코치가 고른다.
+export const VERIFY_TYPES = {
+  photo: { label: "사진 인증", icon: "camera", how: "결과물을 찍어 올리면 코치가 사진을 보고 확인해요." },
+  quiz: { label: "퀴즈 인증", icon: "quiz", how: "코치가 오늘 한 내용에서 세 문제를 내요. 두 문제 이상 맞히면 통과예요." },
+  write: { label: "글 인증", icon: "pen", how: "오늘 한 것을 자기 말로 적으면 코치가 읽고 확인해요." },
+} as const;
+export type VerifyType = keyof typeof VERIFY_TYPES;
+export const isVerifyType = (value: unknown): value is VerifyType => typeof value === "string" && value in VERIFY_TYPES;
+export const verifyTypeOf = (task: { verify_type?: string }): VerifyType => (isVerifyType(task.verify_type) ? task.verify_type : "photo");
 
 export type PlanDay = { date: string; tasks: PlanTask[] };
 
@@ -23,7 +34,15 @@ export type Plan = {
   days: PlanDay[];
 };
 
-export type Proof = { goal_id: string; task_id: string; date: string; passed: boolean; reason: string; image_path: string | null; created_at: string };
+export type Proof = { goal_id: string; task_id: string; date: string; kind: VerifyType; passed: boolean; reason: string; image_path: string | null; appeal: string | null; created_at: string };
+
+// 버거운 날 코치가 내놓는 조정안 하나. 무엇이 달라지고 어떤 대가가 따르는지 함께 보여 준다.
+export type AdjustOption = {
+  label: string;
+  impact: string;
+  moves: { goal_id: string; task_id: string; to_date: string }[]; // 다른 날로 옮길 과제
+  drops: { goal_id: string; task_id: string }[]; // 이번에는 하지 않을 과제
+};
 
 export type PlanStatus = "pending" | "ready" | "failed";
 
@@ -83,16 +102,22 @@ export const MATERIAL_TYPES: Record<string, string> = {
   "image/png": "png",
   "image/webp": "webp",
 };
-export const LIMITS = { title: 40, note: 300, schedule: 120, summary: 1500, minMinutes: 10, maxMinutes: 600, lockCount: 8, lockLength: 16 };
-// 잠글 수 있는 앱. part가 있으면 앱 전체 대신 그 화면만 잠글 수 있다.
-export const LOCK_APPS: { name: string; part?: string }[] = [
-  { name: "인스타그램", part: "릴스" },
-  { name: "유튜브", part: "쇼츠" },
-  { name: "틱톡" },
-  { name: "게임" },
-  { name: "웹툰" },
-  { name: "넷플릭스" },
+export const LIMITS = { title: 40, note: 300, schedule: 120, summary: 1500, minMinutes: 10, maxMinutes: 600, lockCount: 12, lockLength: 80, proofText: 1000, appeal: 300, reason: 200 };
+// 잠글 수 있는 앱. parts가 있으면 앱 전체 대신 그 화면만 골라 잠글 수 있다.
+// 휴대폰 앱에서는 설치된 앱 목록에서 직접 고르고, 웹에서는 자주 쓰는 앱 가운데 고른다.
+export const LOCK_APPS: { name: string; pkg: string; parts?: string[] }[] = [
+  { name: "인스타그램", pkg: "com.instagram.android", parts: ["릴스", "스토리", "탐색"] },
+  { name: "유튜브", pkg: "com.google.android.youtube", parts: ["쇼츠"] },
+  { name: "틱톡", pkg: "com.ss.android.ugc.trill" },
+  { name: "페이스북", pkg: "com.facebook.katana", parts: ["릴스"] },
+  { name: "X", pkg: "com.twitter.android" },
+  { name: "네이버 웹툰", pkg: "com.nhn.android.webtoon" },
+  { name: "넷플릭스", pkg: "com.netflix.mediaclient" },
 ];
+
+// 잠글 대상 한 줄의 모양: "앱 이름", "앱 이름 화면", 또는 설치된 앱에서 고른 "앱 이름|패키지".
+export const lockLabel = (target: string) => target.split("|")[0];
+export const lockLabels = (targets: string[]) => targets.map(lockLabel);
 
 export const KIND_FILTERS = [{ value: "all", label: "전체" }, ...KINDS.map((kind) => ({ value: kind.value, label: kind.short }))] as const;
 export type KindFilter = "all" | GoalKind;
@@ -143,7 +168,6 @@ export function readValues(formData: FormData): GoalValues {
   const text = (name: string) => String(formData.get(name) ?? "").trim();
   const kind = text("kind");
   const picked = formData.getAll("lock").map(String);
-  const custom = text("lock_custom").split(/[,·、]/);
   return {
     title: text("title"),
     kind: isKind(kind) ? kind : "dated",
@@ -152,7 +176,7 @@ export function readValues(formData: FormData): GoalValues {
     schedule: text("schedule"),
     note: text("note"),
     material_summary: text("material_summary").slice(0, LIMITS.summary),
-    lock_targets: cleanLockTargets([...picked, ...custom]),
+    lock_targets: cleanLockTargets(picked),
   };
 }
 

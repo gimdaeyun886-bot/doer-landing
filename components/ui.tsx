@@ -34,6 +34,9 @@ const ICONS = {
   refresh: <><path d="M20 12a8 8 0 1 1-2.6-5.9" /><path d="M20 4v5h-5" /></>,
   swap: <path d="M7 8h11m-3-3 3 3-3 3M17 16H6m3 3-3-3 3-3" />,
   search: <><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4 4" /></>,
+  quiz: <><circle cx="12" cy="12" r="8.5" /><path d="M9.6 9.6a2.5 2.5 0 1 1 3.6 2.3c-.8.4-1.2 1-1.2 1.8m0 2.6h.01" /></>,
+  pen: <path d="M5 19h3.5L19 8.5 15.5 5 5 15.5Zm8.5-12L17 10.5" />,
+  user: <><circle cx="12" cy="8.5" r="3.6" /><path d="M5 19.5a7 7 0 0 1 14 0" /></>,
   alert: <><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5v5.5m0 3.2h.01" /></>,
 } as const;
 
@@ -102,11 +105,12 @@ export function NavButton({ href, icon, label }: { href: string; icon: IconName;
   );
 }
 
-export function TabBar({ active }: { active: "today" | "goals" }) {
+export function TabBar({ active }: { active: "today" | "goals" | "me" }) {
   const tabs = [
     { key: "today", href: "/today", icon: "today", label: "오늘" },
     { key: "goals", href: "/goals", icon: "goal", label: "목표" },
     { key: "coach", href: "/goals/new", icon: "chat", label: "코치" },
+    { key: "me", href: "/settings", icon: "user", label: "내 정보" },
   ] as const;
   return (
     <nav className="tabbar" aria-label="주 메뉴">

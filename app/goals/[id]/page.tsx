@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 import { GoalDetail } from "@/components/GoalDetail";
 import { formatMinutes, goalTag, isUuid, todayInSeoul } from "@/lib/goals";
-import { getGoal, getLockTargets, isConfigured, listProofs, materialUrl } from "@/lib/supabase";
+import { getGoal, getSettings, isConfigured, listProofs, signedUrl } from "@/lib/supabase";
 import { deleteGoal, regeneratePlan } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -26,16 +26,16 @@ export default async function GoalDetailPage({ params, searchParams }: Props) {
   const { notice } = await searchParams;
   const goal = await loadGoal(id);
   if (!goal) notFound();
-  const [lockTargets, proofs] = await Promise.all([getLockTargets(), listProofs({ goalId: goal.id })]);
+  const [settings, proofs, materialSrc] = await Promise.all([getSettings(), listProofs({ goalId: goal.id }), signedUrl(goal.material_path)]);
 
   return (
     <GoalDetail
       goal={goal}
       today={todayInSeoul()}
-      lockTargets={lockTargets}
+      lockTargets={settings.lockTargets}
       proofs={proofs}
       notice={notice}
-      materialSrc={goal.material_path ? materialUrl(goal.material_path) : null}
+      materialSrc={materialSrc}
       replan={regeneratePlan.bind(null, goal.id)}
       remove={deleteGoal.bind(null, goal.id)}
     />

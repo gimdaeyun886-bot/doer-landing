@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { TodayView } from "@/components/TodayView";
 import { Notice, TabBar } from "@/components/ui";
 import { todayInSeoul } from "@/lib/goals";
-import { getLockTargets, isConfigured, listPlannedGoals, listProofs } from "@/lib/supabase";
+import { getSettings, isConfigured, listPlannedGoals, listProofs } from "@/lib/supabase";
 
 export const metadata: Metadata = { title: "오늘 할 일" };
 export const dynamic = "force-dynamic";
@@ -21,7 +21,6 @@ export default async function TodayPage() {
     );
   }
   const today = todayInSeoul();
-  const [goals, proofs, lockTargets] = await Promise.all([listPlannedGoals(), listProofs({ date: today }), getLockTargets()]);
-  // 예전 모양의 계획(날짜별 할 일이 없는 것)은 오늘 화면에서 뺀다.
-  return <TodayView goals={goals.filter((goal) => goal.plan?.days)} today={today} proofs={proofs} lockTargets={lockTargets} />;
+  const [goals, proofs, settings] = await Promise.all([listPlannedGoals(), listProofs({ date: today }), getSettings()]);
+  return <TodayView goals={goals} today={today} proofs={proofs} lockTargets={settings.lockTargets} started={settings.lockDate === today} />;
 }
