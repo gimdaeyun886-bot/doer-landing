@@ -7,20 +7,22 @@
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowLightNavigationBar">true</item>
     </style>
-    <!-- 잠금 창: 뒤가 비쳐 보이는 바탕 위에 카드가 올라온다. -->
-    <style name="LockTheme" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:windowIsTranslucent">true</item>
-        <item name="android:windowBackground">@android:color/transparent</item>
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@color/cream</item>
-        <item name="android:windowLightNavigationBar">true</item>
+    <!-- 잠금 화면: 화면 전체를 깊은 밤색으로 덮고, 천천히 밝아지며 나타난다. -->
+    <style name="LockTheme" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@drawable/bg_lock_night</item>
+        <item name="android:statusBarColor">#1B1613</item>
+        <item name="android:navigationBarColor">#1B1613</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
         <item name="android:windowAnimationStyle">@style/LockAnimation</item>
     </style>
     <style name="LockAnimation">
-        <item name="android:windowEnterAnimation">@android:anim/fade_in</item>
-        <item name="android:windowExitAnimation">@android:anim/fade_out</item>
+        <item name="android:windowEnterAnimation">@anim/lock_in</item>
+        <item name="android:windowExitAnimation">@anim/lock_out</item>
+        <item name="android:activityOpenEnterAnimation">@anim/lock_in</item>
+        <item name="android:activityCloseExitAnimation">@anim/lock_out</item>
     </style>
     <color name="cream">#FBF7F0</color>
-    <color name="night">#2A2420</color>
+    <color name="night">#1D1815</color>
     <color name="coral">#E8592C</color>
 </resources>
