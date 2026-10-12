@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { GoalDetail } from "@/components/GoalDetail";
-import { formatDate, formatMinutes, isUuid } from "@/lib/goals";
+import { formatMinutes, goalTag, isUuid } from "@/lib/goals";
 import { getGoal, isConfigured, materialUrl } from "@/lib/supabase";
 import { deleteGoal, regeneratePlan } from "../actions";
 
@@ -17,7 +17,7 @@ const loadGoal = cache(async (id: string) => (isUuid(id) && isConfigured() ? get
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const goal = await loadGoal((await params).id);
   if (!goal) return { title: "목표를 찾을 수 없어요" };
-  const description = `${goal.exam_date ? `${formatDate(goal.exam_date)} 시험` : "기한 없는 목표"} · 하루 ${formatMinutes(goal.daily_minutes)}`;
+  const description = `${goalTag(goal)} · 하루 ${formatMinutes(goal.daily_minutes)}`;
   return { title: goal.title, description, openGraph: { title: goal.title, description } };
 }
 

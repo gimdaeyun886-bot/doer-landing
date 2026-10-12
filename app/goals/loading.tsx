@@ -1,15 +1,11 @@
 export default function Loading() {
   return (
-    <div className="loading" role="status" aria-live="polite" aria-busy="true">
-      <p className="loading-status">
-        <span className="spinner" aria-hidden="true" />
-        불러오는 중이에요…
-      </p>
-      <div aria-hidden="true">
-        <span className="skeleton skeleton-title" />
-        <span className="skeleton skeleton-card" />
-        <span className="skeleton skeleton-card" />
-      </div>
+    <div className="screen screen-warm loading" role="status" aria-live="polite" aria-busy="true">
+      <span className="sr-only">불러오는 중이에요</span>
+      <span className="skeleton skeleton-title" aria-hidden="true" />
+      <span className="skeleton skeleton-card" aria-hidden="true" />
+      <span className="skeleton skeleton-card" aria-hidden="true" />
+      <span className="skeleton skeleton-card" aria-hidden="true" />
     </div>
   );
 }
