@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { applyAdjustment, requestAdjustment, startToday, type AdjustState } from "@/app/goals/actions";
 import { LIMITS, VERIFY_TYPES, lockLabels, verifyTypeOf, type AdjustOption, type PlanTask } from "@/lib/goals";
 import { native } from "@/lib/native";
+import { AccessHelp } from "./SettingsForms";
 import { Button, ButtonLink, Icon, Notice } from "./ui";
 
 type Row = { task: PlanTask; goalTitle: string };
@@ -79,6 +80,7 @@ export function StartButton({ rows, lockTargets }: { rows: Row[]; lockTargets: s
         )}
         {!app && locks.length > 0 && <Notice tone="info">다른 앱을 실제로 잠그는 일은 휴대폰에 설치한 Do-er 앱에서만 돼요. 지금 화면에서는 인증까지 할 수 있어요.</Notice>}
 
+        {needAccess && <AccessHelp />}
         <div className="sheet-actions">
           {needAccess ? (
             <Button

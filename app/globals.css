@@ -640,3 +640,124 @@ button { cursor: pointer; }
 .today .dock { order: 2; margin-top: 0; }
 .today .tabbar { order: 3; margin-top: 0; }
 .today dialog { order: 4; }
+
+/* ════ 여백 다듬기: 글이 숨 쉴 자리를 둔다. 위 규칙들을 덮어쓴다. ════ */
+.screen { gap: 18px; padding-inline: 22px; }
+.headline { gap: 4px; padding: 14px 4px 2px; }
+.headline > p:last-child:not(.date):not(.overline) { margin-top: 10px; font-size: 15px; line-height: 24px; }
+.card { padding: 20px 20px 12px; border-radius: 28px; }
+.card-head { align-items: center; padding-bottom: 12px; }
+.card-head h2 { font-size: 16px; }
+.muted, .row-hint, .quick-hint, .keep-note { font-size: 13px !important; line-height: 20px !important; }
+
+.coach-line { align-items: flex-start; gap: 12px; padding: 16px 18px 16px 14px; border-radius: 22px; }
+.coach-line p { font-size: 14px; line-height: 23px; }
+.notice { padding: 14px 16px; border-radius: 18px; line-height: 22px; }
+
+/* 목표 상세 */
+.detail-head { gap: 10px; padding: 8px 4px 4px; }
+.detail-head h1 { font-size: 30px; line-height: 40px; }
+.detail-head .meta { display: grid; gap: 6px; font-size: 14px; line-height: 21px; }
+.detail-head .meta span { align-items: flex-start; gap: 8px; }
+.detail-head .meta .icon { margin-top: 3px; }
+.tasks > li { gap: 14px; padding-block: 18px; }
+.tasks > li:first-child { padding-top: 6px; }
+.tasks > li > div { gap: 6px; }
+.tasks p { font-size: 14px; line-height: 22px; }
+.verify { gap: 10px; margin-top: 8px; padding: 12px 14px; border-radius: 16px; font-size: 13.5px; line-height: 21px; }
+.cal { gap: 14px; }
+.cal-grid { row-gap: 4px; }
+.cal-day { gap: 6px; margin-top: 6px; padding: 18px 16px 8px; border-radius: 22px; }
+.cal-day header { gap: 3px; padding-bottom: 6px; }
+.cal-day h3 { font-size: 16px; }
+.cal-day header p { font-size: 13px; }
+.cal-sum { padding: 12px 0 10px; font-size: 13px; }
+.basis { padding-bottom: 20px; }
+.basis > ul { gap: 14px; }
+.basis > ul li { font-size: 14.5px; line-height: 23px; padding-left: 26px; }
+.assume { gap: 8px; margin-top: 18px; padding: 16px; border-radius: 18px; }
+.assume li { font-size: 14px; line-height: 22px; }
+.weeks summary { gap: 14px; padding-block: 15px; }
+.weeks summary i { width: 28px; height: 28px; font-size: 13px; }
+.weeks summary small { font-size: 12px; line-height: 18px; }
+.week-why { margin: 0 0 12px 42px; padding: 12px 14px; border-radius: 14px; font-size: 13.5px; line-height: 21px; }
+.weeks ul { gap: 8px; padding: 0 0 16px 42px; }
+.weeks li { font-size: 14px; line-height: 22px; padding-left: 14px; }
+.weeks li::before { top: 10px; }
+.rule { gap: 10px; padding: 2px 8px; font-size: 13px; line-height: 20px; }
+.told { gap: 14px; padding: 14px 16px 14px 14px; }
+.told p { font-size: 14px; line-height: 22px; }
+.stamp { font-size: 12px; padding-block: 4px; }
+
+/* 오늘 */
+.today-row { gap: 14px; padding: 16px 0; }
+.today-list li:first-child .today-row { padding-top: 4px; }
+.today-text { gap: 2px; }
+.today-text b { font-size: 16px; line-height: 24px; }
+.today-text small { font-size: 13px; line-height: 19px; }
+.today-sum { padding-inline: 6px; font-size: 14px; }
+.lock-banner { padding: 16px 18px; }
+.lock-note { font-size: 13px; line-height: 20px; }
+
+/* 내 목표 */
+.goal-card { gap: 12px; padding: 20px; }
+.goal-today { padding-top: 12px; font-size: 13px; }
+.meta { font-size: 13.5px; }
+
+/* 확인 장 */
+.sheet-list { padding: 6px 20px; }
+.sheet-row { gap: 6px; padding-block: 16px; }
+.sheet-row > label, .row-label { font-size: 13px; line-height: 19px; }
+.sheet-row input[type="text"], .sheet-row input[type="number"], .sheet-row input[type="date"], .sheet-row textarea { font-size: 16px; line-height: 25px; }
+.sheet-row textarea { min-height: 25px; }
+.sheet-row textarea#note, .sheet-row textarea#context { min-height: 50px; }
+.segmented { margin-block: 4px 6px; }
+.segmented span { height: 40px; font-size: 13px; }
+.with-unit input { width: 5ch !important; }
+.material-row { gap: 14px; padding-top: 2px; }
+.lock-picker { gap: 10px; }
+.lock-chosen { gap: 10px; }
+.lock-chosen li { gap: 10px; padding: 14px 12px 16px 16px; border-radius: 18px; }
+/* 아래에 붙는 버튼 뒤로 글이 비쳐 보이지 않게, 바닥에 화면 색을 깐다. */
+.confirm { padding-bottom: 0; }
+.confirm .dock { margin: 8px -22px 0; padding: 18px 22px max(20px, env(safe-area-inset-bottom)); background: linear-gradient(180deg, #fae6d800 0, #fae6d8 26px); }
+
+/* 아래에서 올라오는 창 */
+.sheet { padding: 12px 24px max(26px, env(safe-area-inset-bottom)); }
+.sheet[open] { gap: 10px; }
+.sheet h2 { line-height: 33px; }
+.sheet p:not(.sheet-target):not(.notice) { font-size: 15px; line-height: 24px; }
+.sheet h3 { margin: 16px 0 0; font-size: 13px; }
+.sheet-actions { gap: 8px; margin-top: 16px; }
+.start-list li { gap: 12px; padding-block: 12px; font-size: 13.5px; line-height: 20px; }
+.adjust-list { gap: 10px; margin-top: 10px; }
+.adjust-list button { gap: 8px; padding: 16px 18px; }
+.adjust-list span { font-size: 14px; line-height: 22px; }
+
+/* 대화 */
+.chat-body { gap: 16px; padding: 12px 2px 18px; }
+.bubble { padding: 12px 16px; line-height: 24px; }
+.quick { gap: 10px; }
+.quick .chips { gap: 8px; }
+.lock-card { gap: 12px; padding: 16px; }
+.understood { padding: 6px 18px; }
+.understood div { gap: 16px; padding-block: 12px; }
+.understood dd { font-size: 15px; line-height: 23px; }
+
+/* 내 정보, 약관 */
+.settings-card { gap: 14px; padding: 20px; }
+.link-list a { padding-block: 16px; }
+.doc section { gap: 12px; padding: 22px 20px; }
+.doc p, .doc li { font-size: 14.5px; line-height: 24px; }
+.doc ul { gap: 8px; }
+.doc td { padding-block: 12px; }
+
+/* '제한된 설정' 안내 */
+.access-help { padding: 12px 16px; border-radius: 16px; background: var(--tint); }
+.access-help summary { color: var(--coach); font-size: 14px; font-weight: 700; cursor: pointer; list-style: none; }
+.access-help summary::-webkit-details-marker { display: none; }
+.access-help ol { display: grid; gap: 8px; margin-top: 12px; padding-left: 20px; list-style: decimal; }
+.access-help li, .access-help p { color: #5c5248; font-size: 14px !important; line-height: 22px !important; }
+.access-help p { margin-block: 10px 12px; color: var(--mut) !important; font-size: 13px !important; }
+.confirm .dock { bottom: 0; }
+.with-unit input { width: auto !important; min-width: 2ch; max-width: 6ch; field-sizing: content; }

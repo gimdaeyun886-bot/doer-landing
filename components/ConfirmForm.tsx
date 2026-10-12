@@ -42,7 +42,7 @@ export function ConfirmForm({ action, initial, today, mode, initialFile, current
         </Row>
         <KindRow kind={values.kind} deadline={values.deadline} today={today} error={errors.deadline} />
         <Row id="schedule" label="언제 할 수 있는지" optional error={errors.schedule}>
-          <input id="schedule" name="schedule" type="text" defaultValue={values.schedule} maxLength={LIMITS.schedule} placeholder="예: 평일 밤 9시 이후, 주말 오전. 수요일은 못 해요" aria-invalid={Boolean(errors.schedule)} aria-describedby={errors.schedule ? "schedule-error" : undefined} />
+          <textarea id="schedule" name="schedule" rows={1} defaultValue={values.schedule} maxLength={LIMITS.schedule} placeholder="예: 평일 밤 9시 이후, 주말 오전. 수요일은 못 해요" aria-invalid={Boolean(errors.schedule)} aria-describedby={errors.schedule ? "schedule-error" : undefined} />
         </Row>
         <Row id="daily_minutes" label="보통 하루에 낼 시간" error={errors.daily_minutes}>
           <span className="with-unit">

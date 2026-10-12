@@ -48,11 +48,33 @@ export function AccessStatus() {
         Do-er는 접근성 권한으로 지금 열린 앱이 잠근 앱인지만 확인해요. 화면에 적힌 내용이나 입력한 글자는 읽지도 모으지도 않아요. 권한은 휴대폰 설정에서 언제든 끌 수 있고, 끄면 그날은 인증하지 못한 것으로 남아요.
       </p>
       {status === "off" && (
-        <Button type="button" variant="soft" onClick={() => native()?.openAccessSettings()}>
-          권한 켜러 가기
-        </Button>
+        <>
+          <Button type="button" variant="soft" onClick={() => native()?.openAccessSettings()}>
+            권한 켜러 가기
+          </Button>
+          <AccessHelp />
+        </>
       )}
     </section>
+  );
+}
+
+// 스토어 밖에서 설치한 앱은 안드로이드가 접근성 권한을 한 번 막는다. 푸는 길을 순서대로 알려 준다.
+export function AccessHelp() {
+  return (
+    <details className="access-help">
+      <summary>&lsquo;제한된 설정&rsquo;이라며 막힐 때</summary>
+      <ol>
+        <li>아래 버튼으로 Do-er 앱 정보 화면을 열어요.</li>
+        <li>오른쪽 위 점 세 개(⋮)를 눌러요.</li>
+        <li>&lsquo;제한된 설정 허용&rsquo;을 누르고 잠금을 풀어요.</li>
+        <li>돌아와서 &lsquo;권한 켜러 가기&rsquo;를 다시 눌러 Do-er 앱 잠금을 켜요.</li>
+      </ol>
+      <p>점 세 개가 안 보이면, 권한 화면에서 Do-er를 한 번 눌러 막힌 뒤에 다시 열어 보세요. 스토어에서 받은 앱이 아니라서 안드로이드가 한 번 더 확인하는 절차예요.</p>
+      <Button type="button" variant="quiet" className="btn-sm" onClick={() => native()?.openAppSettings?.()}>
+        Do-er 앱 정보 열기
+      </Button>
+    </details>
   );
 }
 

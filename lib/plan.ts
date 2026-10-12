@@ -106,7 +106,7 @@ const turnSystem = () => `당신은 Do-er의 코치입니다. 사용자가 해�
 더 깊이 묻기 (ask는 note)
 - 위 여섯 가지는 계획을 짜기 위한 최소한일 뿐입니다. 좋은 계획은 그 사람만의 사정에서 나옵니다. 4번 뒤에, 답에 따라 계획이 실제로 달라지는 것을 두세 가지 더 묻습니다. 목표와 앞선 답을 보고 그때그때 정합니다. 정해진 목록에서 고르지 않습니다.
   · 예 — 시험: 목표 점수와 지금 점수, 과목별 자신감, 교재를 어디까지 봤는지, 지난번에 왜 밀렸는지, 인강과 문제 풀이 중 무엇이 맞는지 / 운동: 장소와 장비, 아픈 곳, 혼자 하는지 / 작업물: 누구에게 보여 줄 것인지, 지금 막힌 지점, 끝났다고 볼 기준 / 습관: 하루 중 가장 흔들리는 때, 전에 끊긴 이유
-- 사용자가 스스로 말해 준 사정도 놓치지 않고 facts에 담습니다.
+- 사용자가 스스로 말해 준 사정도 놓치지 않고 facts에 담습니다. 잠글 앱에 관한 것은 facts에 넣지 않습니다.
 - 사용자가 "이제 짜 줘", "그만 물어봐"라고 하거나 답이 짧아지면 더 묻지 않고 다음으로 갑니다. 깊이 묻는 질문은 많아도 네 번을 넘기지 않습니다.
 - 깊이 묻는 질문에도 options를 줍니다.
 
@@ -257,6 +257,7 @@ const DAYS_SYSTEM = `당신은 Do-er의 코치입니다. 이미 정해진 전체
 - 받은 날짜를 하나도 빠뜨리지 않고 순서대로 모두 돌려줍니다.
 - 그날 낼 수 있는 시간은 "언제 할 수 있는지"의 요일·시간을 따르고, 따로 없으면 하루 시간을 따릅니다. 그날 할 일의 예상 시간 합이 그 시간을 넘지 않습니다.
 - 사용자가 못 한다고 한 요일은 tasks를 빈 배열로 둡니다. 그 밖의 날은 할 일을 1~3개 둡니다.
+- 할 일은 목표 자체를 향한 것만 둡니다. 앱 잠금 설정, 계획 세우기, 환경 정리 같은 준비 작업을 할 일로 넣지 않습니다. 잠금은 Do-er가 알아서 합니다.
 - 할 일은 "~하기"가 아니라 끝났는지 알 수 있는 결과물로 씁니다. "공부하기", "운동하기"처럼 막연하게 쓰지 않습니다.
 - 이번 주에 끝낼 것(items)이 그 주의 날짜들에 빠짐없이 나뉘어 들어가야 합니다. 주의 끝에는 그 주에 한 것을 점검하는 할 일을 둡니다.
 - 날짜가 정해진 목표에서 마지막 날짜가 목표일이면, 그날은 새 내용 없이 가벼운 점검만 둡니다.
@@ -369,8 +370,8 @@ export async function generatePlan(goal: Goal): Promise<PlanResult> {
   const usage = { prompt_tokens: 0, completion_tokens: 0 };
   try {
     const wanted = weekCountFor(goal);
-    const response = await ai().chat.completions.parse({
-      model: PLAN_MODEL,
+    const askOutline = (model: string, timeout: number) => new OpenAI({ timeout, maxRetries: 0 }).chat.completions.parse({
+      model,
       reasoning_effort: (process.env.OPENAI_PLAN_EFFORT as "low" | "medium" | "high" | undefined) ?? "low",
       max_completion_tokens: 12000,
       messages: [
@@ -378,6 +379,11 @@ export async function generatePlan(goal: Goal): Promise<PlanResult> {
         { role: "user", content: `${describe(goal, start)}\n\n주 수: ${wanted ? `정확히 ${wanted}주` : "2주에서 8주 사이에서 필요한 만큼"}` },
       ],
       response_format: zodResponseFormat(OutlineSchema, "outline"),
+    });
+    // 깊이 생각하는 모델이 제때 답하지 못하면, 한 단계 가벼운 모델로 한 번 더 해 본다.
+    const response = await askOutline(PLAN_MODEL, 70_000).catch((error) => {
+      failureMessage(error, "");
+      return askOutline(CHAT_MODEL, 60_000);
     });
     addUsage(usage, response.usage);
     const outlineMs = Date.now() - startedAt;

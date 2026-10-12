@@ -267,7 +267,7 @@ if (goalUrl) {
   // 값이 실제로 달라져야 계획을 다시 짠다.
   const minutes = (await page.inputValue('input[name="daily_minutes"]')) === "90" ? "100" : "90";
   await page.fill('input[name="daily_minutes"]', minutes);
-  await page.fill('input[name="schedule"]', "매일 밤 9시 이후 1시간 30분");
+  await page.fill('[name="schedule"]', "매일 밤 9시 이후 1시간 30분");
   await page.locator(".dock .btn").click();
   await page.waitForURL(/notice=/, { timeout: 280000 });
   await settle();

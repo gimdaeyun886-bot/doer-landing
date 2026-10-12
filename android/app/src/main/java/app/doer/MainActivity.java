@@ -176,6 +176,12 @@ public class MainActivity extends Activity {
             startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
         }
 
+        /** 이 앱의 정보 화면. 스토어 밖에서 설치한 앱은 여기서 '제한된 설정 허용'을 먼저 눌러야 접근성 권한을 켤 수 있다. */
+        @JavascriptInterface
+        public void openAppSettings() {
+            startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName())));
+        }
+
         @JavascriptInterface
         public void openExternal(String url) {
             if (url != null && url.startsWith("https://")) startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
