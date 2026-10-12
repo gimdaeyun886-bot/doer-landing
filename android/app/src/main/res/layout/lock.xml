@@ -21,26 +21,20 @@
         android:layout_height="0dp"
         android:layout_weight="2" />
 
-    <FrameLayout
+    <ImageView
         android:id="@+id/lock_mark"
-        android:layout_width="124dp"
-        android:layout_height="124dp"
-        android:background="@drawable/bg_lock_halo">
-
-        <ImageView
-            android:layout_width="84dp"
-            android:layout_height="84dp"
-            android:layout_gravity="center"
-            android:background="@drawable/bg_lock_circle"
-            android:padding="15dp"
-            android:src="@drawable/symbol" />
-    </FrameLayout>
+        android:layout_width="232dp"
+        android:layout_height="232dp"
+        android:layout_marginStart="-22dp"
+        android:adjustViewBounds="true"
+        android:scaleType="fitCenter"
+        android:src="@drawable/lock_art" />
 
     <TextView
         android:id="@+id/lock_where"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="34dp"
+        android:layout_marginTop="-26dp"
         android:background="@drawable/bg_lock_pill"
         android:paddingStart="13dp"
         android:paddingTop="6dp"
@@ -92,7 +86,7 @@
         android:id="@+id/lock_close"
         android:layout_width="match_parent"
         android:layout_height="50dp"
-        android:layout_marginTop="6dp"
+        android:layout_marginTop="-26dp"
         android:gravity="center"
         android:text="닫기"
         android:textColor="#9C9186"
