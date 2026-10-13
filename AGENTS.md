@@ -41,7 +41,7 @@ AI 코딩 도구와 사람이 함께 보는 작업 규칙입니다. 기능 명�
 - 이미지는 JPG, PNG, WEBP, 3MB 이하만 받는다.
 - Server Action이 끝나면 `revalidatePath` 후 `redirect`한다. `redirect`는 try/catch 밖에서 부른다.
 - 오류 메시지는 사용자가 이해할 수 있는 한국어 문장으로 쓰고, 원인 상세는 서버 로그에만 남긴다.
-- AI 사용은 `ai_runs`로 사용자별 하루 횟수를 제한한다.
+- AI 사용은 `ai_runs`로 두 겹으로 제한한다. 사용자별 하루 횟수(`lib/plan.ts`의 `DAILY_LIMIT`)와 모든 사용자를 합친 하루 총 횟수(`AI_DAILY_TOTAL`, DB 함수 `ai_runs_since`).
 
 ## 환경 변수
 

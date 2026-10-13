@@ -13,8 +13,12 @@ const JUDGE_MODEL = process.env.OPENAI_JUDGE_MODEL || "gpt-6-sol";
 const PLAN_MODEL = process.env.OPENAI_PLAN_MODEL || "gpt-6.1-sol";
 // 날짜별로 푸는 일은 주마다 따로 여러 번 부르므로 빠른 모델을 쓴다.
 const DAYS_MODEL = process.env.OPENAI_DAYS_MODEL || "gpt-6-luna";
-// 요금이 튀지 않도록 사용자마다 하루 사용 횟수를 제한한다. (RLS 덕분에 자기 기록만 세어진다)
-const DAILY_LIMIT = { plan: 12, chat: 200, read: 20, verify: 60, adjust: 10 };
+// 요금이 튀지 않도록 하루 사용 횟수를 두 겹으로 제한한다.
+// 1) 사용자 한 명이 하루에 쓸 수 있는 횟수(종류별). RLS 덕분에 자기 기록만 세어진다.
+//    계획 한 번은 안에서 AI를 여러 번 부르지만 한 번으로 센다.
+const DAILY_LIMIT = { plan: 4, chat: 60, read: 6, verify: 20, adjust: 4 };
+// 2) 모든 사용자를 합친 하루 총 횟수. 넘으면 그날은 누구도 AI를 쓰지 못한다. AI_DAILY_TOTAL로 바꿀 수 있다.
+const DAILY_TOTAL = Number(process.env.AI_DAILY_TOTAL) || 1500;
 // 날짜별 할 일은 가까운 주부터 이만큼까지 한 번에 푼다. 그 뒤는 주 단위 흐름만 둔다.
 const DETAIL_WEEKS = 8;
 const MAX_WEEKS = 26;
@@ -29,8 +33,20 @@ type Usage = { prompt_tokens: number; completion_tokens: number } | null | undef
 
 async function underLimit(purpose: Purpose) {
   const since = new Date(`${todayInSeoul()}T00:00:00+09:00`).toISOString();
-  const { count } = await (await getSupabase()).from("ai_runs").select("id", { count: "exact", head: true }).eq("purpose", purpose).gte("created_at", since);
-  return (count ?? 0) < DAILY_LIMIT[purpose];
+  const supabase = await getSupabase();
+  const [mine, all] = await Promise.all([
+    supabase.from("ai_runs").select("id", { count: "exact", head: true }).eq("purpose", purpose).gte("created_at", since),
+    // 전체 합계는 다른 사람의 기록을 볼 수 없으므로, 수만 돌려주는 DB 함수로 센다.
+    supabase.rpc("ai_runs_since", { since }),
+  ]);
+  if ((mine.count ?? 0) >= DAILY_LIMIT[purpose]) return false;
+  // 함수가 아직 없으면(SQL을 돌리기 전) 전체 제한은 건너뛴다.
+  if (all.error) console.error("ai total count failed:", all.error.message);
+  else if (Number(all.data ?? 0) >= DAILY_TOTAL) {
+    console.error("ai daily total reached:", all.data);
+    return false;
+  }
+  return true;
 }
 
 async function logRun(purpose: Purpose, ok: boolean, goalId: string | null, model: string, usage: Usage) {
