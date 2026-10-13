@@ -24,7 +24,7 @@ import java.util.Set;
 
 /**
  * 잠금 서비스. 오늘 할 일을 시작한 동안 두 가지를 한다.
- * 1) 사용자가 고른 앱, 또는 그 앱의 릴스·쇼츠 같은 화면이 열리면 잠금 창을 띄운다.
+ * 1) 사용자가 고른 앱, 또는 그 앱의 릴스·쇼츠 같은 화면이 열리면 그 위에 잠금 화면을 덮는다.
  * 2) 화면만 잠근 앱에서는, 피드에 섞여 나오는 릴스 미리보기나 스토리 줄 위를 가림막으로 덮는다.
  *    다른 앱의 화면 요소를 실제로 없앨 수는 없어서, 그 자리 위에 덮개를 그리는 방식이다.
  * 지금 열린 앱과 화면 요소의 종류(이름표)만 보고, 화면의 글이나 입력 내용은 읽거나 저장하지 않는다.
@@ -62,6 +62,7 @@ public class LockService extends AccessibilityService {
     private long lastBlock;
     private long lastCover;
     private CoverView cover;
+    private LockScreen lock;
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
@@ -71,6 +72,7 @@ public class LockService extends AccessibilityService {
         if (pkg.equals(getPackageName())) return;
         if (!Locks.active(this)) {
             hideCover();
+            if (lock != null) lock.hide();
             return;
         }
         Locks.Rule rule = Locks.rules(this).get(pkg);
@@ -95,13 +97,16 @@ public class LockService extends AccessibilityService {
         if (now - lastBlock < 1200) return;
         lastBlock = now;
 
-        // 앱 전체는 홈으로, 화면만 잠근 경우는 그 화면에서 한 걸음 물러나게 한다.
+        // 다른 화면으로 넘기지 않고, 잠근 앱 위에 잠금 화면을 그대로 덮는다. 잠근 앱은 덮인 뒤에 뒤에서 물린다.
+        if (lock == null) lock = new LockScreen(this);
+        if (lock.show(where, rule.whole)) return;
+
+        // 덮지 못했을 때만 예전 방식으로, 앱을 물린 뒤 잠금 창을 따로 띄운다.
         performGlobalAction(rule.whole ? GLOBAL_ACTION_HOME : GLOBAL_ACTION_BACK);
         final Intent intent = new Intent(this, LockActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         intent.putExtra("where", where);
         intent.putExtra("whole", rule.whole);
-        // 물러나는 동작이 끝난 뒤에 잠금 창을 올린다. 바로 띄우면 홈 화면이 그 위를 덮어 버린다.
         new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> startActivity(intent), 380);
     }
 
@@ -212,11 +217,13 @@ public class LockService extends AccessibilityService {
     @Override
     public void onInterrupt() {
         hideCover();
+        if (lock != null) lock.remove();
     }
 
     @Override
     public boolean onUnbind(Intent intent) {
         hideCover();
+        if (lock != null) lock.remove();
         return super.onUnbind(intent);
     }
 
