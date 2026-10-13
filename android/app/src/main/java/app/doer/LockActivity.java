@@ -49,13 +49,10 @@ public class LockActivity extends Activity {
             view.setTranslationY(rise);
             view.animate().alpha(1f).translationY(0f).setStartDelay(160 + i * 70L).setDuration(520).setInterpolator(new DecelerateInterpolator(2.2f)).start();
         }
-        // 그림은 떠오르지 않고, 어둠 속에서 천천히 드러나며 제자리로 가라앉는다.
         View mark = findViewById(R.id.lock_mark);
-        mark.animate().cancel();
-        mark.setTranslationY(0f);
-        mark.setScaleX(1.07f);
-        mark.setScaleY(1.07f);
-        mark.animate().alpha(1f).scaleX(1f).scaleY(1f).setStartDelay(80).setDuration(1500).setInterpolator(new DecelerateInterpolator(1.6f)).start();
+        mark.setScaleX(0.86f);
+        mark.setScaleY(0.86f);
+        mark.animate().scaleX(1f).scaleY(1f).setStartDelay(160).setDuration(620).setInterpolator(new DecelerateInterpolator(2.2f)).start();
     }
 
     /** 앱 전체를 잠갔으면 홈으로 나가고, 화면만 잠갔으면 그 앱의 다른 화면(피드 등)으로 돌아간다. */
