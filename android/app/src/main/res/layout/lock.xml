@@ -39,7 +39,7 @@
             android:paddingTop="6dp"
             android:paddingEnd="13dp"
             android:paddingBottom="6dp"
-            android:textColor="#F08A63"
+            android:textColor="#B9B5AE"
             android:textSize="13sp"
             android:textStyle="bold" />
 
@@ -51,7 +51,7 @@
             android:gravity="center"
             android:letterSpacing="-0.03"
             android:text="잠겼어요"
-            android:textColor="#F6F0E8"
+            android:textColor="#E9E6E0"
             android:textSize="38sp"
             android:textStyle="bold" />
 
@@ -63,7 +63,7 @@
             android:gravity="center"
             android:lineSpacingExtra="6dp"
             android:text="오늘 할 일을 모두 인증하기 전에는\n열리지 않아요."
-            android:textColor="#8F857B"
+            android:textColor="#7D7F82"
             android:textSize="15sp" />
 
         <Space
@@ -89,7 +89,7 @@
             android:layout_marginTop="4dp"
             android:gravity="center"
             android:text="닫기"
-            android:textColor="#8F857B"
+            android:textColor="#7D7F82"
             android:textSize="15sp" />
 
         <TextView
@@ -98,7 +98,7 @@
             android:layout_height="wrap_content"
             android:gravity="center"
             android:text="전화·메신저·검색은 그대로 쓸 수 있어요"
-            android:textColor="#5C534C"
+            android:textColor="#4E5053"
             android:textSize="12sp" />
     </LinearLayout>
 </FrameLayout>
