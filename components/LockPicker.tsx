@@ -148,7 +148,7 @@ export function LockPicker({ value, onChange, name }: { value: string[]; onChang
           })}
           {shown.length === 0 && <li className="muted">{choices.length ? "찾는 앱이 없어요." : "앱 목록을 불러오지 못했어요."}</li>}
         </ul>
-        <p className="keep-note">{inApp ? "이 목록은 휴대폰 안에서만 쓰고 고른 앱의 이름만 저장해요." : "휴대폰에 Do-er 앱을 설치하면, 설치된 모든 앱 가운데서 고를 수 있어요."}</p>
+        <p className="keep-note">{inApp ? "앱 목록은 휴대폰 안에서만 쓰고, 고른 앱 이름만 저장해요." : "Do-er 앱을 설치하면 설치된 모든 앱에서 고를 수 있어요."}</p>
         <div className="sheet-actions">
           <Button type="button" onClick={() => dialog.current?.close()}>
             {value.length ? `${chosenKnown.length + chosenOther.length}개 앱 골랐어요` : "닫기"}

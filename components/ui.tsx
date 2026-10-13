@@ -117,13 +117,43 @@ export function TabBar({ active }: { active: "today" | "goals" | "me" }) {
     <nav className="tabbar" aria-label="주 메뉴">
       <div className="tabbar-inner">
         {tabs.map((tab) => (
-          <Link key={tab.key} href={tab.href} aria-current={tab.key === active ? "page" : undefined} aria-label={tab.label}>
-            <Icon name={tab.icon} size={21} weight={tab.key === active ? 2 : 1.8} />
-            {tab.key === active && <span>{tab.label}</span>}
+          <Link key={tab.key} href={tab.href} aria-current={tab.key === active ? "page" : undefined}>
+            <Icon name={tab.icon} size={22} weight={tab.key === active ? 2.1 : 1.7} />
+            <span>{tab.label}</span>
           </Link>
         ))}
       </div>
     </nav>
+  );
+}
+
+// 화면을 나누는 한 구획. 제목과 오른쪽의 짧은 덧말을 둘 수 있다.
+export function Section({ title, aside, children, className = "" }: { title?: string; aside?: ReactNode; children: ReactNode; className?: string }) {
+  return (
+    <section className={`section ${className}`.trim()}>
+      {title && (
+        <div className="section-head">
+          <h2>{title}</h2>
+          {aside && <span>{aside}</span>}
+        </div>
+      )}
+      {children}
+    </section>
+  );
+}
+
+// 눌러서 다른 화면으로 가는 목록 한 줄. 아이콘, 제목, 한 줄 설명, 오른쪽 값으로 이뤄진다.
+export function RowLink({ href, icon, title, sub, value }: { href: string; icon?: IconName; title: ReactNode; sub?: ReactNode; value?: ReactNode }) {
+  return (
+    <Link href={href} className="row">
+      {icon && <Icon name={icon} size={20} />}
+      <span className="row-text">
+        <b>{title}</b>
+        {sub && <small>{sub}</small>}
+      </span>
+      {value && <span className="row-value">{value}</span>}
+      <Icon name="chevR" size={16} />
+    </Link>
   );
 }
 

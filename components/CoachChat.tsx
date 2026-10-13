@@ -192,7 +192,7 @@ export function CoachChat({ today, savedLocks }: { today: string; savedLocks: st
         {started && <CoachMark />}
         <div>
           <p className="chat-name">코치</p>
-          <p className="chat-sub">{!started ? "목표를 같이 정해요" : ready ? "다 정리했어요" : "나가도 대화는 그대로 남아요"}</p>
+          <p className="chat-sub">{!started ? "목표를 같이 정해요" : ready ? "다 정리했어요" : "대화는 저장돼요"}</p>
         </div>
         {started && (
           <button type="button" className="nav-btn chat-reset" onClick={restart} aria-label="대화를 처음부터 다시 하기">
@@ -208,7 +208,7 @@ export function CoachChat({ today, savedLocks }: { today: string; savedLocks: st
               <Symbol size={64} />
             </span>
             <h1>{"안녕하세요, 코치예요.\n어떤 걸 해내고 싶어요?"}</h1>
-            <p>{"시험, 운동, 책, 미뤄 둔 작업.\n사정을 많이 알려 줄수록 계획이 나에게 맞아져요."}</p>
+            <p>시험, 운동, 책, 미뤄 둔 작업 무엇이든요.</p>
             {firstTime && (
               <ol className="how">
                 {HOW.map((step) => (
@@ -288,14 +288,14 @@ export function CoachChat({ today, savedLocks }: { today: string; savedLocks: st
                 </button>
               ))}
             </div>
-            <p className="quick-hint">눌러서 답하거나, 아래에 직접 적어도 돼요.</p>
+            
           </div>
         )}
 
         {canAnswer && ask === "lock" && (
           <div className="quick lock-card under-coach">
             <LockPicker value={picked} onChange={setPicked} />
-            <p className="quick-hint">고른 곳만 잠겨요. 전화, 메신저, 검색은 그대로 열려 있어요.</p>
+            <p className="quick-hint">전화, 메신저, 검색은 잠기지 않아요.</p>
             <Button type="button" variant="soft" disabled={picked.length === 0} onClick={() => send(`${lockLabels(picked).join(", ")} 잠글게요.`, undefined, picked)}>
               {picked.length ? "이대로 잠그기" : "잠글 앱을 골라 주세요"}
             </Button>
@@ -328,7 +328,7 @@ export function CoachChat({ today, savedLocks }: { today: string; savedLocks: st
         {canAnswer && enough && ask !== "lock" && (
           <div className="quick under-coach">
             <button type="button" className="text-btn" onClick={() => setConfirming(true)}>
-              이 정도면 됐어요, 계획 짜러 가기
+              이대로 계획 짜기
             </button>
           </div>
         )}

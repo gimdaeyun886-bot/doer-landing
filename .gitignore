@@ -27,3 +27,4 @@ android/local.properties
 .vercel
 .env*
 dist
+.court/

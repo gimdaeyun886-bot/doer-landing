@@ -173,11 +173,14 @@ if (first.ready) {
   goalUrl = await confirmAndCreate("1");
   const cells = await page.locator('.cal-cell i[data-kind="tasks"]').count();
   check("달력에 날짜별 할 일이 채워짐", cells > 5, `이번 달 ${cells}일`);
-  check("계획의 근거가 보임", (await page.locator(".basis > ul li").count()) >= 3);
+  check("목표 화면에 근거 한 줄 요약과 근거 화면으로 가는 줄이 보임", (await page.locator(".why-summary").count()) === 1 && (await page.locator(`a.row[href$="/why"]`).count()) === 1);
   await page.locator(".cal-nav button").last().click();
   await page.waitForTimeout(700);
   check("목표일이 달력에 표시됨", (await page.locator(".cal-cell[data-deadline]").count()) === 1);
-  check("고른 잠금이 상세에 보임", /인스타그램 릴스 · 인스타그램 스토리 · 유튜브/.test(await page.locator(".detail-head").innerText()), (await page.locator(".detail-head .meta").innerText()).replace(/\n/g, " "));
+  await page.goto(goalUrl + "/why");
+  await shot("1-why", true);
+  check("근거 화면에 코치의 근거와 주별 흐름이 보임", (await page.locator("ul.basis li").count()) >= 3 && (await page.locator(".weeks details").count()) >= 1);
+  await page.goto(goalUrl);
 }
 
 // 2. 오늘: 시작 전 확인, 맞춤 인증
@@ -191,21 +194,21 @@ check("오늘 날짜의 할 일이 보임", rowCount > 0, `${rowCount}개: ${(aw
 if (TAIL) {
   await page.goto(BASE + "/goals");
   await settle();
-  goalUrl = new URL(await page.locator(".goal-card").first().getAttribute("href"), BASE).href;
+  goalUrl = new URL(await page.locator(".goal-row").first().getAttribute("href"), BASE).href;
   await page.goto(BASE + "/today");
   await settle();
 }
 if (rowCount && !TAIL) {
-  await page.getByRole("button", { name: "이대로 시작" }).click();
+  await page.getByRole("button", { name: "시작하기" }).click();
   await page.locator("dialog.start-sheet[open]").waitFor();
   await page.waitForTimeout(400);
   await shot("2-start-sheet");
   const sheetText = await page.locator("dialog.start-sheet[open]").innerText();
-  check("시작 전에 할 일·인증 방식·잠기는 곳을 보여 줌", /인증 방식/.test(sheetText) && /인스타그램 릴스/.test(sheetText));
-  await page.getByRole("button", { name: "확인했어요, 시작" }).click();
-  await page.locator(".lock-banner").waitFor({ timeout: 20000 });
+  check("시작 전에 할 일·잠기는 곳·바로 풀 수 없음·사진 보관을 알려 줌", /인스타그램 릴스/.test(sheetText) && /바로 푸는 방법은 없어요/.test(sheetText) && /7일 뒤 지워요/.test(sheetText) && /인증/.test(sheetText));
+  await page.getByRole("button", { name: "시작", exact: true }).click();
+  await page.locator(`.status[data-tone="lock"]`).waitFor({ timeout: 20000 });
   await shot("2-today-locked");
-  check("시작하면 '잠금 중'으로 바뀌고 시작 버튼이 사라짐", (await page.getByRole("button", { name: "이대로 시작" }).count()) === 0);
+  check("시작하면 '잠금 중'으로 바뀌고 시작 버튼이 사라짐", (await page.getByRole("button", { name: "시작하기" }).count()) === 0);
 
   // 인증 방식별로 한 번씩 해 본다.
   for (let index = 0; index < rowCount; index++) {
@@ -230,7 +233,7 @@ if (rowCount && !TAIL) {
       await sheet.getByRole("button", { name: "판정이 틀린 것 같아요" }).click();
       await sheet.locator(".appeal textarea").fill("점검용 이의 제기입니다. 사진을 다시 봐 주세요.");
       await sheet.getByRole("button", { name: "다시 봐 달라고 요청" }).click();
-      await sheet.getByText("운영자가 직접 확인해요").waitFor({ timeout: 20000 });
+      await sheet.getByText("운영자가 확인해요").waitFor({ timeout: 20000 });
       check("판정에 이의를 제기할 수 있음", true);
     } else if (label === "퀴즈 인증") {
       await sheet.getByRole("button", { name: /문제 받기|새 문제로/ }).click();
@@ -260,7 +263,7 @@ console.log("\n[4] 목록과 수정");
 await page.goto(BASE + "/goals");
 await settle();
 await shot("4-goals", true);
-check("목록에 등록한 목표가 보임", (await page.locator(".goal-card").count()) === 1);
+check("목록에 등록한 목표가 보임", (await page.locator(".goal-row").count()) === 1);
 if (goalUrl) {
   await page.goto(goalUrl + "/edit");
   await settle();

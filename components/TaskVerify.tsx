@@ -5,10 +5,10 @@ import { appealProof, startQuiz, verifyTask, type VerifyState } from "@/app/goal
 import { LIMITS, VERIFY_TYPES, formatMinutes, materialError, verifyTypeOf, type PlanTask } from "@/lib/goals";
 import { Button, Icon, Notice } from "./ui";
 
-type Props = { goalId: string; goalTitle: string; tone: string; index: number; task: PlanTask; proof: { passed: boolean; reason: string; appealed: boolean } | null };
+type Props = { goalId: string; goalTitle: string; task: PlanTask; proof: { passed: boolean; reason: string; appealed: boolean } | null };
 
 // 오늘 할 일 한 줄. 누르면 창이 올라와, 코치가 이 과제에 맞춰 고른 방식(사진·퀴즈·글)으로 인증한다.
-export function TaskVerify({ goalId, goalTitle, tone, index, task, proof }: Props) {
+export function TaskVerify({ goalId, goalTitle, task, proof }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const kind = verifyTypeOf(task);
@@ -58,32 +58,30 @@ export function TaskVerify({ goalId, goalTitle, tone, index, task, proof }: Prop
   const close = () => dialog.current?.close();
   const later = (
     <Button type="button" variant="quiet" onClick={close}>
-      나중에 할게요
+      닫기
     </Button>
   );
 
   return (
     <li>
-      <button type="button" className="today-row" onClick={() => dialog.current?.showModal()} data-passed={passed || undefined}>
-        <span className={`num num-${tone}`} data-done={passed || undefined}>
-          {passed ? <Icon name="check" size={17} weight={2.6} /> : index + 1}
+      <button type="button" className="today-row" onClick={() => dialog.current?.showModal()} data-state={passed ? "passed" : judged ? "retry" : "todo"}>
+        <span className="check" aria-hidden="true">
+          {passed && <Icon name="check" size={15} weight={3} />}
         </span>
         <span className="today-text">
           <b>{task.title}</b>
           <small>
-            {goalTitle} · {type.label}
+            {type.label} · 약 {formatMinutes(task.minutes)}
+            {judged && !passed && <em> · 다시 인증</em>}
           </small>
         </span>
-        <span className="today-state" data-kind={passed ? "passed" : judged ? "retry" : "todo"}>
-          {passed ? "인증 끝" : judged ? "다시 인증" : "인증하기"}
-        </span>
+        <span className="sr-only">{passed ? "인증 끝" : "눌러서 인증하기"}</span>
+        <Icon name="chevR" size={16} />
       </button>
 
       <dialog ref={dialog} className="sheet verify-sheet" aria-labelledby={`verify-${task.id}`}>
         <span className="sheet-grip" aria-hidden="true" />
-        <p className="sheet-over">
-          {goalTitle} · 약 {formatMinutes(task.minutes)}
-        </p>
+        <p className="sheet-over">{goalTitle}</p>
         <h2 id={`verify-${task.id}`}>{task.title}</h2>
         <p>{task.detail}</p>
         <div className="verify">
@@ -93,7 +91,6 @@ export function TaskVerify({ goalId, goalTitle, tone, index, task, proof }: Prop
               {type.label} · {task.verify_method}
             </b>
             {task.verify_guide}
-            <small>코치가 이 과제에 맞춰 고른 방식이에요. {type.how}</small>
           </span>
         </div>
 
@@ -117,19 +114,19 @@ export function TaskVerify({ goalId, goalTitle, tone, index, task, proof }: Prop
                   <img className="proof-preview" src={preview} alt="인증할 사진 미리보기" />
                 )}
                 {pending ? (
-                  <Waiting>코치가 사진을 보고 있어요. 10초쯤 걸려요.</Waiting>
+                  <Waiting>사진을 확인하고 있어요</Waiting>
                 ) : preview ? (
                   <>
                     <Button type="submit">이 사진으로 인증</Button>
                     <Button type="button" variant="quiet" onClick={() => input.current?.click()}>
-                      다른 사진 고르기
+                      다른 사진
                     </Button>
                   </>
                 ) : (
                   <>
                     <Button type="button" onClick={() => input.current?.click()}>
                       <Icon name="camera" size={19} />
-                      {judged ? "다시 찍어 올리기" : "사진 올려 인증하기"}
+                      {judged ? "다시 올리기" : "사진 올리기"}
                     </Button>
                     {later}
                   </>
@@ -139,7 +136,7 @@ export function TaskVerify({ goalId, goalTitle, tone, index, task, proof }: Prop
 
             {kind === "quiz" &&
               (pending ? (
-                <Waiting>코치가 답을 읽고 있어요. 10초쯤 걸려요.</Waiting>
+                <Waiting>답을 확인하고 있어요</Waiting>
               ) : questions ? (
                 <>
                   <ol className="quiz">
@@ -157,7 +154,7 @@ export function TaskVerify({ goalId, goalTitle, tone, index, task, proof }: Prop
                   <Button type="submit">답 보내기</Button>
                 </>
               ) : loadingQuiz ? (
-                <Waiting>코치가 문제를 내고 있어요.</Waiting>
+                <Waiting>문제를 만들고 있어요</Waiting>
               ) : (
                 <>
                   <Button type="button" onClick={loadQuiz}>
@@ -170,14 +167,14 @@ export function TaskVerify({ goalId, goalTitle, tone, index, task, proof }: Prop
 
             {kind === "write" &&
               (pending ? (
-                <Waiting>코치가 글을 읽고 있어요. 10초쯤 걸려요.</Waiting>
+                <Waiting>글을 확인하고 있어요</Waiting>
               ) : (
                 <>
                   <label className="sr-only" htmlFor={`w-${task.id}`}>
                     오늘 한 것을 적어 주세요
                   </label>
-                  <textarea id={`w-${task.id}`} className="proof-text" name="text" rows={5} maxLength={LIMITS.proofText} value={text} onChange={(event) => setText(event.target.value)} placeholder="오늘 한 것을 자기 말로 적어 주세요. 무엇을 했고, 무엇을 알게 됐는지." />
-                  <p className="count">{text.trim().length}자 · 40자 이상</p>
+                  <textarea id={`w-${task.id}`} className="proof-text" name="text" rows={5} maxLength={LIMITS.proofText} value={text} onChange={(event) => setText(event.target.value)} placeholder="무엇을 했고 무엇을 알게 됐는지 적어 주세요" />
+                  <p className="count">{text.trim().length} / 40자 이상</p>
                   <Button type="submit" disabled={text.trim().length < 40}>
                     이 글로 인증
                   </Button>
@@ -190,7 +187,7 @@ export function TaskVerify({ goalId, goalTitle, tone, index, task, proof }: Prop
         {judged && !passed && !pending && (
           <div className="appeal">
             {appealed ? (
-              <p className="muted">판정을 다시 봐 달라고 요청했어요. 운영자가 직접 확인해요.</p>
+              <p className="muted">다시 봐 달라고 요청했어요. 운영자가 확인해요.</p>
             ) : appealOpen ? (
               <form action={appealAction}>
                 <label htmlFor={`a-${task.id}`}>어떤 점이 틀렸나요?</label>
@@ -207,7 +204,7 @@ export function TaskVerify({ goalId, goalTitle, tone, index, task, proof }: Prop
             )}
           </div>
         )}
-        {kind === "photo" && !passed && <p className="keep-note">올린 사진은 판정에만 쓰고 7일 뒤에 지워요.</p>}
+        {kind === "photo" && !passed && <p className="keep-note">사진은 판정에만 쓰고 7일 뒤 지워요.</p>}
       </dialog>
     </li>
   );

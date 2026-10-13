@@ -80,12 +80,6 @@ export function PlanCalendar({ plan, today, deadline, passed }: { plan: Plan; to
         })}
       </div>
 
-      <ul className="cal-legend" aria-hidden="true">
-        <li data-kind="tasks">할 일</li>
-        <li data-kind="done">인증 끝</li>
-        {deadline && <li data-kind="deadline">목표일</li>}
-      </ul>
-
       <section key={selected} className="cal-day" aria-live="polite">
         <header>
           <h3>
@@ -107,28 +101,38 @@ export function PlanCalendar({ plan, today, deadline, passed }: { plan: Plan; to
                 const passed = done.has(task.id);
                 return (
                   <li key={task.id} data-done={passed || undefined}>
-                    <h4>{task.title}</h4>
-                    <p>{task.detail}</p>
-                    <p className="day-meta">
-                      <span className="day-verify">
-                        <Icon name={passed ? "check" : type.icon} size={14} weight={passed ? 2.6 : 1.8} />
-                        {passed ? "인증 끝" : task.verify_method}
-                      </span>
-                      <span>약 {formatMinutes(task.minutes)}</span>
-                    </p>
+                    <details>
+                      <summary>
+                        <span className="check" aria-hidden="true">
+                          {passed && <Icon name="check" size={15} weight={3} />}
+                        </span>
+                        <span className="today-text">
+                          <b>{task.title}</b>
+                          <small>
+                            {passed ? "인증 끝" : type.label} · 약 {formatMinutes(task.minutes)}
+                          </small>
+                        </span>
+                        <Icon name="chevR" size={16} />
+                      </summary>
+                      <p>{task.detail}</p>
+                      <p className="day-verify">
+                        <Icon name={type.icon} size={15} />
+                        {task.verify_method}
+                      </p>
+                    </details>
                   </li>
                 );
               })}
             </ol>
             <p className="cal-sum">
-              {selected === today ? "오늘 자정까지" : "이날 자정까지"} {tasks.length}가지 · 약 {formatMinutes(totalMinutes(tasks))}
+              {tasks.length}가지 · 약 {formatMinutes(totalMinutes(tasks))}
             </p>
           </>
         ) : tasks ? (
-          <p className="cal-empty">쉬는 날이에요. 이날은 할 일이 없어요.</p>
+          <p className="cal-empty">쉬는 날이에요.</p>
         ) : (
           <div className="cal-empty">
-            <p>이 주는 가까워지면 날짜별 할 일로 풀어 드려요. 지금은 주 단위 계획이에요.</p>
+            <p>가까워지면 날짜별 할 일로 풀어요. 지금은 주 단위예요.</p>
             {week && (
               <ul>
                 {week.items.map((item) => (

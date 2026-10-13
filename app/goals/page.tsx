@@ -53,7 +53,6 @@ export default async function GoalsPage({ searchParams }: { searchParams: Search
     <div className="screen screen-warm goals">
       <header className="headline headline-row">
         <div>
-          <p className="date">{filtered ? `찾은 목표 ${total}개` : `진행 중 ${total}개`}</p>
           <h1>내 목표</h1>
         </div>
         <Link href="/goals/new" className="add-btn">
@@ -62,7 +61,7 @@ export default async function GoalsPage({ searchParams }: { searchParams: Search
       </header>
       {search.notice === "deleted" && <Notice tone="success">목표를 지웠어요.</Notice>}
 
-      {(total > 0 || filtered) && (
+      {(total > 5 || filtered) && (
         <>
           <form className="search" action="/goals" role="search">
             <label className="sr-only" htmlFor="q">
@@ -85,11 +84,11 @@ export default async function GoalsPage({ searchParams }: { searchParams: Search
       {goals.length === 0 ? (
         filtered ? (
           <EmptyState title="조건에 맞는 목표가 없어요" action={<ButtonLink href="/goals" variant="soft">전체 보기</ButtonLink>}>
-            찾는 말이나 모양을 바꿔 보세요.
+            찾는 말을 바꿔 보세요.
           </EmptyState>
         ) : (
           <EmptyState title="아직 목표가 없어요" action={<ButtonLink href="/goals/new">코치에게 목표 말하기</ButtonLink>}>
-            해내고 싶은 걸 하나만 말해 주세요. 계획은 코치가 짜요.
+            하나만 말해 주세요. 계획은 코치가 짜요.
           </EmptyState>
         )
       ) : (

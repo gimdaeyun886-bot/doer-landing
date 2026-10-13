@@ -45,7 +45,7 @@ export function AccessStatus() {
         <span data-on={status === "on"}>{status === "on" ? "켜짐" : "꺼짐"}</span>
       </div>
       <p className="row-hint">
-        Do-er는 접근성 권한으로 지금 열린 앱이 잠근 앱인지만 확인해요. 화면에 적힌 내용이나 입력한 글자는 읽지도 모으지도 않아요. 권한은 휴대폰 설정에서 언제든 끌 수 있고, 끄면 그날은 인증하지 못한 것으로 남아요.
+        접근성 권한으로 지금 열린 앱이 잠근 앱인지만 확인해요. 화면의 글이나 입력한 내용은 읽지도 모으지도 않아요. 언제든 끌 수 있고, 끄면 그날은 인증하지 못한 날로 남아요.
       </p>
       {status === "on" && <SeenIds />}
       {status === "off" && (
@@ -76,7 +76,7 @@ function SeenIds() {
   return (
     <details className="access-help">
       <summary>릴스·쇼츠가 제대로 안 가려질 때</summary>
-      <p>잠금을 시작한 뒤 인스타그램이나 유튜브에서 안 가려지는 화면을 잠깐 열었다가 돌아와 아래 버튼을 눌러 주세요. 그 화면의 요소 이름표만 복사하고, 글이나 사진 내용은 들어가지 않아요.</p>
+      <p>안 가려지는 화면을 잠깐 열었다가 돌아와 아래 버튼을 눌러 주세요. 화면 요소의 이름표만 복사하고 글이나 사진은 들어가지 않아요.</p>
       <Button type="button" variant="quiet" className="btn-sm" onClick={copy}>
         화면 정보 복사
       </Button>
@@ -96,7 +96,7 @@ export function AccessHelp() {
         <li>&lsquo;제한된 설정 허용&rsquo;을 누르고 잠금을 풀어요.</li>
         <li>돌아와서 &lsquo;권한 켜러 가기&rsquo;를 다시 눌러 Do-er 앱 잠금을 켜요.</li>
       </ol>
-      <p>점 세 개가 안 보이면, 권한 화면에서 Do-er를 한 번 눌러 막힌 뒤에 다시 열어 보세요. 스토어에서 받은 앱이 아니라서 안드로이드가 한 번 더 확인하는 절차예요.</p>
+      <p>점 세 개가 안 보이면 권한 화면에서 Do-er를 한 번 눌러 막힌 뒤 다시 열어 보세요.</p>
       <Button type="button" variant="quiet" className="btn-sm" onClick={() => native()?.openAppSettings?.()}>
         Do-er 앱 정보 열기
       </Button>

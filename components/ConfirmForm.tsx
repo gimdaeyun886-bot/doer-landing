@@ -30,7 +30,7 @@ export function ConfirmForm({ action, initial, today, mode, initialFile, current
       <header className="headline">
         <p className="overline">{create ? "코치가 알아들은 것" : "목표 고치기"}</p>
         <h1>{create ? "이대로 계획을\n짤까요?" : "달라진 점을\n고쳐 주세요"}</h1>
-        <p>{create ? "틀린 곳은 눌러서 고쳐요. 여기 적힌 대로 끝나는 날까지 날짜별 계획을 짜요." : "날짜나 시간을 바꾸면 코치가 오늘부터의 계획을 다시 짜요."}</p>
+        <p>{create ? "틀린 곳은 눌러서 고쳐요." : "바꾸면 오늘부터의 계획을 다시 짜요."}</p>
       </header>
 
       {state.message && <Notice tone="error">{state.message}</Notice>}
@@ -167,7 +167,7 @@ function MaterialRow({ serverError, file, onFile, currentMaterialUrl }: { server
         </label>
         <div className="material-text">
           <p>{shown ? "목차·범위 사진 1장" : "목차나 범위 사진"}</p>
-          <p className="muted">{shown ? "눌러서 다른 사진으로 바꿔요" : "올리면 단원 이름에 맞춰 짜요 · 3MB 이하"}</p>
+          <p className="muted">{shown ? "눌러서 바꾸기" : "선택 · 3MB 이하"}</p>
         </div>
         {preview && (
           <button type="button" className="icon-btn" onClick={clear} aria-label="고른 사진 빼기">
@@ -199,7 +199,7 @@ function LockRow({ selected }: { selected: string[] }) {
         잠글 앱
       </span>
       <LockPicker value={value} onChange={setValue} name="lock" />
-      <p className="row-hint">한 번 정하면 모든 목표에 똑같이 적용돼요. 고른 곳만 잠기고 전화·메신저·검색은 열려 있어요.</p>
+      <p className="row-hint">모든 목표에 똑같이 적용돼요. 전화·메신저·검색은 잠기지 않아요.</p>
     </div>
   );
 }
@@ -224,8 +224,8 @@ function Planning() {
           <Symbol size={44} />
         </span>
       </div>
-      <h2>{"끝나는 날까지의 계획을\n날짜별로 짜고 있어요"}</h2>
-      <p>{"꼼꼼히 짜느라 1분쯤 걸려요.\n화면을 닫지 말고 기다려 주세요."}</p>
+      <h2>계획을 짜고 있어요</h2>
+      <p>1분쯤 걸려요. 화면을 닫지 마세요.</p>
       <ol className="steps">
         {STEPS.map((label, index) => (
           <li key={label} data-state={index < step ? "done" : index === step ? "now" : "next"}>
