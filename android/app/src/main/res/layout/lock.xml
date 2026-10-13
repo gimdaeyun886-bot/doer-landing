@@ -24,8 +24,8 @@
 
         <ImageView
             android:id="@+id/lock_mark"
-            android:layout_width="264dp"
-            android:layout_height="264dp"
+            android:layout_width="232dp"
+            android:layout_height="232dp"
             android:scaleType="fitCenter"
             android:src="@drawable/lock_art" />
 
