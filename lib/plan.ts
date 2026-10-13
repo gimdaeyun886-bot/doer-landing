@@ -13,12 +13,26 @@ const JUDGE_MODEL = process.env.OPENAI_JUDGE_MODEL || "gpt-6-sol";
 const PLAN_MODEL = process.env.OPENAI_PLAN_MODEL || "gpt-6.1-sol";
 // 날짜별로 푸는 일은 주마다 따로 여러 번 부르므로 빠른 모델을 쓴다.
 const DAYS_MODEL = process.env.OPENAI_DAYS_MODEL || "gpt-6-luna";
-// 요금이 튀지 않도록 하루 사용 횟수를 두 겹으로 제한한다.
-// 1) 사용자 한 명이 하루에 쓸 수 있는 횟수(종류별). RLS 덕분에 자기 기록만 세어진다.
-//    계획 한 번은 안에서 AI를 여러 번 부르지만 한 번으로 센다.
-const DAILY_LIMIT = { plan: 4, chat: 60, read: 6, verify: 20, adjust: 4 };
-// 2) 모든 사용자를 합친 하루 총 횟수. 넘으면 그날은 누구도 AI를 쓰지 못한다. AI_DAILY_TOTAL로 바꿀 수 있다.
-const DAILY_TOTAL = Number(process.env.AI_DAILY_TOTAL) || 1500;
+// 요금이 정해 둔 예산을 넘지 않도록 세 겹으로 막는다. 기록은 ai_runs에 남고, 쓴 토큰 수로 금액을 어림한다.
+// 1) 사용자 한 명이 하루에 쓸 수 있는 횟수(종류별). 계획 한 번은 안에서 AI를 여러 번 부르지만 한 번으로 센다.
+const DAILY_LIMIT = { plan: 3, chat: 50, read: 5, verify: 15, adjust: 3 };
+const DAILY_MESSAGE: Record<keyof typeof DAILY_LIMIT, string> = {
+  chat: "오늘 준비된 대화 횟수를 모두 썼어요. 아래에서 직접 적어 주세요.",
+  read: "오늘 준비된 사진 읽기 횟수를 모두 썼어요.",
+  plan: "오늘 준비된 계획 생성 횟수를 모두 썼어요. 내일 다시 시도해 주세요.",
+  verify: "오늘 준비된 인증 확인 횟수를 모두 썼어요. 내일 다시 시도해 주세요.",
+  adjust: "오늘은 더 조정할 수 없어요. 내일 다시 이야기해요.",
+};
+// 2) 최근 7일 동안 모든 사용자가 쓴 금액의 상한(달러). 3) 그 가운데 한 사람이 쓸 수 있는 몫(달러).
+const BUDGET_USD = Number(process.env.AI_BUDGET_USD) || 70;
+const USER_BUDGET_USD = Number(process.env.AI_USER_BUDGET_USD) || 10;
+// 토큰 백만 개의 값(달러). 쓰는 AI 서비스의 요금표에 맞춰 환경 변수로 바꾼다. 모델이 섞여 있으므로 가장 비싼 쪽에 맞춘다.
+const PRICE_IN = Number(process.env.AI_PRICE_IN) || 5;
+const PRICE_OUT = Number(process.env.AI_PRICE_OUT) || 20;
+// 실패한 호출처럼 기록되지 않는 사용이 있으므로, 예산의 이만큼에서 멈춘다.
+const BUDGET_MARGIN = 0.9;
+const BUDGET_DAYS = 7;
+const costOf = (input: number, output: number) => (input * PRICE_IN + output * PRICE_OUT) / 1_000_000;
 // 날짜별 할 일은 가까운 주부터 이만큼까지 한 번에 푼다. 그 뒤는 주 단위 흐름만 둔다.
 const DETAIL_WEEKS = 8;
 const MAX_WEEKS = 26;
@@ -31,22 +45,30 @@ export const isAiConfigured = () => Boolean(process.env.OPENAI_API_KEY);
 type Purpose = keyof typeof DAILY_LIMIT;
 type Usage = { prompt_tokens: number; completion_tokens: number } | null | undefined;
 
-async function underLimit(purpose: Purpose) {
-  const since = new Date(`${todayInSeoul()}T00:00:00+09:00`).toISOString();
+/** AI를 지금 쓸 수 없으면 사용자에게 보여 줄 이유를, 쓸 수 있으면 null을 돌려준다. */
+async function blockedBy(purpose: Purpose): Promise<string | null> {
+  const today = new Date(`${todayInSeoul()}T00:00:00+09:00`).toISOString();
+  const week = new Date(Date.now() - BUDGET_DAYS * 24 * 60 * 60 * 1000).toISOString();
   const supabase = await getSupabase();
-  const [mine, all] = await Promise.all([
-    supabase.from("ai_runs").select("id", { count: "exact", head: true }).eq("purpose", purpose).gte("created_at", since),
-    // 전체 합계는 다른 사람의 기록을 볼 수 없으므로, 수만 돌려주는 DB 함수로 센다.
-    supabase.rpc("ai_runs_since", { since }),
+  const [daily, mine, all] = await Promise.all([
+    supabase.from("ai_runs").select("id", { count: "exact", head: true }).eq("purpose", purpose).gte("created_at", today),
+    supabase.from("ai_runs").select("input_tokens,output_tokens").gte("created_at", week).limit(5000),
+    // 전체 합계는 다른 사람의 기록을 볼 수 없으므로, 합만 돌려주는 DB 함수로 센다.
+    supabase.rpc("ai_usage_since", { since: week }),
   ]);
-  if ((mine.count ?? 0) >= DAILY_LIMIT[purpose]) return false;
-  // 함수가 아직 없으면(SQL을 돌리기 전) 전체 제한은 건너뛴다.
-  if (all.error) console.error("ai total count failed:", all.error.message);
-  else if (Number(all.data ?? 0) >= DAILY_TOTAL) {
-    console.error("ai daily total reached:", all.data);
-    return false;
+  if ((daily.count ?? 0) >= DAILY_LIMIT[purpose]) return DAILY_MESSAGE[purpose];
+
+  const sum = (rows: { input_tokens: number | null; output_tokens: number | null }[]) => rows.reduce((cost, row) => cost + costOf(row.input_tokens ?? 0, row.output_tokens ?? 0), 0);
+  if (sum(mine.data ?? []) >= USER_BUDGET_USD * BUDGET_MARGIN) return "이번 주에 준비된 AI 사용량을 모두 썼어요. 며칠 뒤에 다시 쓸 수 있어요.";
+
+  // 함수가 아직 없으면(SQL을 돌리기 전) 전체 예산 검사는 건너뛴다.
+  const total = Array.isArray(all.data) ? all.data[0] : all.data;
+  if (all.error || !total) console.error("ai total usage failed:", all.error?.message ?? "no data");
+  else if (costOf(Number(total.input_tokens ?? 0), Number(total.output_tokens ?? 0)) >= BUDGET_USD * BUDGET_MARGIN) {
+    console.error("ai budget reached:", JSON.stringify(total));
+    return "지금은 준비된 AI 사용량을 모두 썼어요. 운영자에게 알려 주세요.";
   }
-  return true;
+  return null;
 }
 
 async function logRun(purpose: Purpose, ok: boolean, goalId: string | null, model: string, usage: Usage) {
@@ -54,6 +76,8 @@ async function logRun(purpose: Purpose, ok: boolean, goalId: string | null, mode
     .from("ai_runs")
     .insert({ purpose, ok, goal_id: goalId, model, input_tokens: usage?.prompt_tokens ?? null, output_tokens: usage?.completion_tokens ?? null });
   if (error) console.error("ai run log failed:", error.message);
+  // 비용을 가늠할 수 있게 호출마다 쓴 토큰 수를 서버 기록에 남긴다. (내용은 남기지 않는다)
+  console.info(`ai run: ${purpose} ${model} in=${usage?.prompt_tokens ?? 0} out=${usage?.completion_tokens ?? 0} ok=${ok}`);
 }
 
 function failureMessage(error: unknown, fallback: string) {
@@ -154,7 +178,8 @@ function sanitize(raw: z.infer<typeof TurnSchema>, prev: Slots): Slots {
 
 export async function coachTurn(history: ChatMessage[], slots: Slots): Promise<TurnResult> {
   if (!isAiConfigured()) return { ok: false, message: "지금은 코치와 대화할 수 없어요. 아래에서 직접 적어 주세요." };
-  if (!(await underLimit("chat"))) return { ok: false, message: "오늘 준비된 대화 횟수를 모두 썼어요. 아래에서 직접 적어 주세요." };
+  const blocked = await blockedBy("chat");
+  if (blocked) return { ok: false, message: blocked };
 
   const messages = history.map((message) => ({ role: message.role === "user" ? ("user" as const) : ("assistant" as const), content: message.text }));
   const { material_summary, lock_targets, ...known } = slots;
@@ -184,7 +209,7 @@ export async function coachTurn(history: ChatMessage[], slots: Slots): Promise<T
 
 // 목차·범위 사진을 읽어 계획에 쓸 수 있는 글로 옮긴다. 읽지 못하면 null.
 export async function readMaterial(imageDataUrl: string): Promise<string | null> {
-  if (!isAiConfigured() || !(await underLimit("read"))) return null;
+  if (!isAiConfigured() || (await blockedBy("read"))) return null;
   try {
     const response = await ai().chat.completions.create({
       model: JUDGE_MODEL,
@@ -379,7 +404,8 @@ export type PlanResult = { ok: true; plan: Plan } | { ok: false; message: string
 
 export async function generatePlan(goal: Goal): Promise<PlanResult> {
   if (!isAiConfigured()) return { ok: false, message: "AI 키가 아직 연결되지 않아 계획을 만들지 못했어요." };
-  if (!(await underLimit("plan"))) return { ok: false, message: "오늘 준비된 계획 생성 횟수를 모두 썼어요. 내일 다시 시도해 주세요." };
+  const blocked = await blockedBy("plan");
+  if (blocked) return { ok: false, message: blocked };
 
   const start = todayInSeoul();
   const startedAt = Date.now();
@@ -444,7 +470,8 @@ export type Verdict = { ok: true; passed: boolean; reason: string } | { ok: fals
 
 export async function verifyProof(goal: Pick<Goal, "id" | "title">, task: PlanTask, imageDataUrl: string): Promise<Verdict> {
   if (!isAiConfigured()) return { ok: false, message: "AI 키가 아직 연결되지 않아 인증을 확인하지 못했어요." };
-  if (!(await underLimit("verify"))) return { ok: false, message: "오늘 준비된 인증 확인 횟수를 모두 썼어요. 내일 다시 시도해 주세요." };
+  const blocked = await blockedBy("verify");
+  if (blocked) return { ok: false, message: blocked };
   try {
     const response = await ai().chat.completions.parse({
       model: JUDGE_MODEL,
@@ -494,7 +521,8 @@ const taskBrief = (goal: Pick<Goal, "title" | "note" | "material_summary">, task
 // 오늘 한 내용에서 문제 세 개를 낸다.
 export async function makeQuiz(goal: Goal, task: PlanTask): Promise<{ ok: true; questions: string[] } | { ok: false; message: string }> {
   if (!isAiConfigured()) return { ok: false, message: "AI 키가 아직 연결되지 않았어요." };
-  if (!(await underLimit("verify"))) return { ok: false, message: "오늘 준비된 인증 확인 횟수를 모두 썼어요. 내일 다시 시도해 주세요." };
+  const blocked = await blockedBy("verify");
+  if (blocked) return { ok: false, message: blocked };
   try {
     const response = await ai().chat.completions.parse({
       model: JUDGE_MODEL,
@@ -527,7 +555,8 @@ export async function makeQuiz(goal: Goal, task: PlanTask): Promise<{ ok: true; 
 // 퀴즈의 답이나 직접 쓴 글을 읽고 판정한다.
 export async function judgeAnswer(goal: Goal, task: PlanTask, kind: "quiz" | "write", answer: string): Promise<Verdict> {
   if (!isAiConfigured()) return { ok: false, message: "AI 키가 아직 연결되지 않아 인증을 확인하지 못했어요." };
-  if (!(await underLimit("verify"))) return { ok: false, message: "오늘 준비된 인증 확인 횟수를 모두 썼어요. 내일 다시 시도해 주세요." };
+  const blocked = await blockedBy("verify");
+  if (blocked) return { ok: false, message: blocked };
   const rule =
     kind === "quiz"
       ? "사용자가 문제 세 개에 답했습니다. 문제마다 답이 맞거나, 그 과제를 실제로 한 사람만 쓸 수 있을 만큼 구체적이면 맞은 것으로 봅니다. 두 문제 이상 맞으면 통과입니다. 이유에는 몇 문제가 맞았는지와, 틀린 문제는 무엇을 다시 보면 되는지 적습니다."
@@ -578,7 +607,8 @@ export type AdjustResult = { ok: true; reply: string; options: AdjustOption[] } 
 
 export async function suggestAdjustments(input: AdjustInput, reason: string): Promise<AdjustResult> {
   if (!isAiConfigured()) return { ok: false, message: "AI 키가 아직 연결되지 않았어요." };
-  if (!(await underLimit("adjust"))) return { ok: false, message: "오늘은 더 조정할 수 없어요. 내일 다시 이야기해요." };
+  const blocked = await blockedBy("adjust");
+  if (blocked) return { ok: false, message: blocked };
   const today = todayInSeoul();
   const body = input
     .map(({ goal, today: tasks, upcoming }) => {

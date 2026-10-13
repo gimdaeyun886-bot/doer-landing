@@ -41,7 +41,7 @@ AI 코딩 도구와 사람이 함께 보는 작업 규칙입니다. 기능 명�
 - 이미지는 JPG, PNG, WEBP, 3MB 이하만 받는다.
 - Server Action이 끝나면 `revalidatePath` 후 `redirect`한다. `redirect`는 try/catch 밖에서 부른다.
 - 오류 메시지는 사용자가 이해할 수 있는 한국어 문장으로 쓰고, 원인 상세는 서버 로그에만 남긴다.
-- AI 사용은 `ai_runs`로 두 겹으로 제한한다. 사용자별 하루 횟수(`lib/plan.ts`의 `DAILY_LIMIT`)와 모든 사용자를 합친 하루 총 횟수(`AI_DAILY_TOTAL`, DB 함수 `ai_runs_since`).
+- AI 사용은 `ai_runs`로 세 겹으로 제한한다(`lib/plan.ts`의 `blockedBy`). 사용자별 하루 횟수, 최근 7일 한 사람의 금액(`AI_USER_BUDGET_USD`), 최근 7일 전체 금액(`AI_BUDGET_USD`, DB 함수 `ai_usage_since`). 금액은 토큰 수에 `AI_PRICE_IN`·`AI_PRICE_OUT`을 곱해 어림한다.
 
 ## 환경 변수
 
