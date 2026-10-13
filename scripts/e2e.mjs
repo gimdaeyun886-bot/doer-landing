@@ -108,10 +108,22 @@ async function confirmAndCreate(name) {
   console.log(`  계획 생성 ${Math.round((Date.now() - started) / 1000)}초`);
   await page.waitForSelector(".detail-head");
   await settle();
+  // 계획을 처음 받으면 코치의 안내가 뜬다. 한 번 본 뒤에는 다시 뜨지 않는다.
+  if (await page.locator(".tour").waitFor({ timeout: 4000 }).then(() => true, () => false)) {
+    await shot(`${name}-tour-plan`);
+    await page.locator(".tour-next").click();
+    await page.waitForTimeout(500);
+    await shot(`${name}-tour-plan-2`);
+    check("계획을 처음 받으면 코치가 화면을 짚어 가며 안내함", (await page.locator(".tour-hole").count()) === 1, await page.locator(".tour-card p").innerText());
+    await page.getByRole("button", { name: "건너뛰기" }).click();
+    await page.waitForTimeout(300);
+  }
   await shot(`${name}-plan`, true);
   return page.url().split("?")[0];
 }
 
+// 점검하는 날에는 할 일이 있어야 하므로, 쉬는 요일은 오늘이 아닌 평일로 잡는다.
+const OFF_DAY = new Date().getDay() === 3 ? "목요일" : "수요일";
 const TAIL = process.env.E2E_TAIL === "1"; // 이미 목표가 있는 계정으로 조정부터 이어서 점검
 // 0. 로그인
 console.log("\n[0] 로그인");
@@ -163,7 +175,7 @@ if (!TAIL) check("로그인하면 오늘 화면(빈 상태)이 보임", /아직 
 console.log("\n[1] 대화 → 확인 → 날짜별 계획");
 const first = TAIL ? { ready: false, lockAsked: false } : await talk("11월 15일에 정보처리기사 실기 시험이 있어", {
   name: "1",
-  answers: ["그때그때 달라요", "평일은 밤 9시 넘어서 1시간, 주말은 오전에 2시간 할 수 있어요. 수요일은 야근이라 못 해요.", "필기는 붙었고 실기는 기출 1회독 했어요. SQL이 약해요.", "자료 사진은 없어요."],
+  answers: ["그때그때 달라요", `평일은 밤 9시 넘어서 1시간, 주말은 오전에 2시간 할 수 있어요. ${OFF_DAY}은 야근이라 못 해요.`, "필기는 붙었고 실기는 기출 1회독 했어요. SQL이 약해요.", "자료 사진은 없어요."],
 });
 if (!TAIL) check("코치가 대화로 목표를 알아듣고 확인 단계까지 감", first.ready);
 if (!TAIL) check("첫 대화에서 잠글 앱을 물음", first.lockAsked);
@@ -187,6 +199,19 @@ if (first.ready) {
 console.log("\n[2] 오늘: 시작 전 확인과 맞춤 인증");
 await page.goto(BASE + "/today");
 await settle();
+if (await page.locator(".tour").waitFor({ timeout: 4000 }).then(() => true, () => false)) {
+  const said = [];
+  for (let i = 0; i < 8 && (await page.locator(".tour").count()); i++) {
+    said.push(await page.locator(".tour-card p").innerText());
+    if (i === 3) await shot("2-tour-today");
+    await page.locator(".tour-next").click();
+    await page.waitForTimeout(450);
+  }
+  check("오늘 화면에 처음 오면 코치가 할 일·잠금·조정을 차례로 안내함", said.length >= 4 && said.some((text) => /버거운 날/.test(text)) && (await page.locator(".tour").count()) === 0, `${said.length}단계`);
+  await page.reload();
+  await page.waitForTimeout(1500);
+  check("한 번 본 안내는 다시 뜨지 않음", (await page.locator(".tour").count()) === 0);
+}
 await shot("2-today");
 const rows = page.locator(".today-row");
 const rowCount = await rows.count();

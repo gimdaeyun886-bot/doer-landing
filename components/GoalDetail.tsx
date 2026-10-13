@@ -1,3 +1,4 @@
+import { CoachTour, type TourStep } from "@/components/CoachTour";
 import { ClearChat, DeleteGoalButton, ReplanButton } from "@/components/GoalActions";
 import { PlanCalendar } from "@/components/PlanCalendar";
 import { ButtonLink, NavButton, Notice, Pill, RowLink, Section, kindTone } from "@/components/ui";
@@ -12,6 +13,14 @@ const NOTICES: Record<string, { tone: "success" | "error"; text: string }> = {
   replanned: { tone: "success", text: "오늘부터의 계획을 다시 짰어요." },
   "updated-noplan": { tone: "error", text: "저장했지만 계획을 다시 만들지 못했어요. 아래에서 다시 시도해 주세요." },
 };
+
+// 계획을 막 받은 사람에게 코치가 짚어 주는 것들.
+const TOUR: TourStep[] = [
+  { text: "계획을 다 짰어요. 어떻게 보는지 잠깐 알려 드릴게요." },
+  { target: ".cal-grid", text: "점이 찍힌 날에 할 일이 있어요. 날짜를 누르면 그날 할 일이 아래에 나와요." },
+  { target: `a.row[href$="/why"]`, text: "제가 왜 이렇게 짰는지는 여기에 적어 뒀어요." },
+  { target: ".detail .dock .btn", text: "이제 오늘 할 일을 보러 가요." },
+];
 
 type Props = { goal: Goal; today: string; notice?: string; proofs: Proof[]; replan: SimpleAction; remove: SimpleAction };
 
@@ -28,6 +37,7 @@ export function GoalDetail({ goal, today, notice, proofs, replan, remove }: Prop
         <DeleteGoalButton action={remove} title={goal.title} />
       </div>
       {(notice === "created" || notice === "created-noplan") && <ClearChat />}
+      {notice === "created" && plan && <CoachTour id="plan" steps={TOUR} doneLabel="오늘 할 일 보기" doneHref="/today" />}
       {notice && NOTICES[notice] && <Notice tone={NOTICES[notice].tone}>{NOTICES[notice].text}</Notice>}
 
       <header className="detail-head">

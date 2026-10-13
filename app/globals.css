@@ -864,7 +864,7 @@ body { font-size: 16px; line-height: 1.5; color: var(--ink); }
 .today-text small { font-size: 13px; line-height: 19px; color: var(--mut); }
 .today-text em { color: var(--red); font-style: normal; font-weight: 600; }
 .today-row[data-state="passed"] .today-text b { color: var(--mut); text-decoration: none; }
-.today-sum { display: grid; gap: 8px; padding: 0; }
+.today-sum { display: grid; grid-template-columns: 1fr; justify-content: stretch; gap: 8px; padding: 0; }
 .today-sum p { display: flex; justify-content: space-between; color: var(--mut); font-size: 13px; }
 .today-sum b { color: var(--ink); font-weight: 700; }
 .progress { height: 6px; margin: 0; border-radius: 3px; background: var(--tint); }
@@ -996,3 +996,21 @@ ul.basis li::before { content: ""; position: absolute; left: 0; top: 4px; bottom
 .today-sum { width: 100%; }
 .today-sum .progress { width: 100%; }
 .quick-hint:empty { display: none; }
+
+/* 오늘 계획 조정: 할 일 목록 아래의 한 줄 */
+.today .adjust-open, .adjust-open { order: 1; align-self: stretch; justify-self: stretch; width: 100%; margin: 0; padding: 12px 14px; border: 0; border-radius: 12px; background: var(--tint); text-align: left; font-size: 16px; text-decoration: none; }
+.today .dock { margin-top: auto; }
+
+/* ── 코치의 안내: 화면을 어둡게 하고 짚는 곳만 밝게 둔다 ── */
+.tour { position: fixed; inset: 0; z-index: 60; animation: fade 0.25s ease-out; }
+.tour-dim { position: absolute; inset: 0; background: #000000a6; }
+.tour-hole { position: fixed; border-radius: 14px; box-shadow: 0 0 0 9999px #000000a6; transition: top 0.3s var(--ease), left 0.3s var(--ease), width 0.3s var(--ease), height 0.3s var(--ease); pointer-events: none; }
+.tour-card { position: fixed; left: max(16px, calc(50% - 214px)); right: max(16px, calc(50% - 214px)); display: grid; gap: 10px; padding: 16px; border-radius: 16px; background: var(--white); box-shadow: 0 12px 32px -12px #00000059; animation: rise 0.35s var(--ease) backwards; }
+.tour-who { display: flex; align-items: center; gap: 8px; }
+.tour-who b { flex: 1; font-size: 14px; font-weight: 700; }
+.tour-who span { color: var(--faint); font-size: 12px; font-weight: 600; }
+.tour-card p { font-size: 16px; line-height: 25px; }
+.tour-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 2px; }
+.tour-actions button { height: 42px; padding: 0 16px; border: 0; border-radius: 10px; font-size: 15px; font-weight: 700; }
+.tour-skip { background: none; color: var(--mut); font-weight: 500 !important; }
+.tour-next { background: var(--coral); color: #fff; }

@@ -142,8 +142,13 @@ export function AdjustButton({ show }: { show: boolean }) {
   return (
     <>
       {show && (
-        <button type="button" className="text-btn adjust-open" onClick={() => dialog.current?.showModal()}>
-          오늘 계획이 버거워요
+        <button type="button" className="row adjust-open" onClick={() => dialog.current?.showModal()}>
+          <Icon name="chat" size={20} />
+          <span className="row-text">
+            <b>오늘 계획이 버거워요</b>
+            <small>코치에게 말하고 조정안 받기</small>
+          </span>
+          <Icon name="chevR" size={16} />
         </button>
       )}
       <dialog ref={dialog} className="sheet adjust-sheet" aria-labelledby="adjust-title" onClose={() => {

@@ -1,3 +1,4 @@
+import { CoachTour, type TourStep } from "@/components/CoachTour";
 import { TaskVerify } from "@/components/TaskVerify";
 import { AdjustButton, LockSync, StartButton } from "@/components/TodayActions";
 import { ButtonLink, EmptyState, Icon, TabBar } from "@/components/ui";
@@ -10,6 +11,15 @@ function shortLocks(targets: string[]) {
   const labels = lockLabels(targets);
   return labels.length > 1 ? `${labels[0]} 외 ${labels.length - 1}곳` : (labels[0] ?? "");
 }
+
+// 처음 온 사람에게 코치가 짚어 주는 것들. 화면에 없는 것은 알아서 건너뛴다.
+const TOUR: TourStep[] = [
+  { text: "반가워요. 이 화면 쓰는 법을 30초만 알려 드릴게요." },
+  { target: ".today-list", text: "오늘 할 일은 제가 정해 둬요. 하나씩 눌러서 인증하면 돼요." },
+  { target: ".today .dock .btn", text: "시작하면 고른 앱이 잠겨요. 다 인증하면 풀리고, 중간에 바로 푸는 방법은 없어요." },
+  { target: ".adjust-open", text: "버거운 날엔 여기서 말해 주세요. 바꿀 방법과 그 대가를 보여 드릴게요." },
+  { target: `.tabbar a[href="/goals"]`, text: "전체 계획과 제가 그렇게 짠 이유는 목표에서 볼 수 있어요." },
+];
 
 // 오늘 화면의 본문. 여러 목표의 계획에서 오늘 날짜의 할 일만 꺼내 한 목록으로 보여 준다.
 export function TodayView({ goals, today, proofs, lockTargets, started }: Props) {
@@ -88,6 +98,7 @@ export function TodayView({ goals, today, proofs, lockTargets, started }: Props)
         </>
       )}
       <AdjustButton show={tasks.length > 0 && !allDone} />
+      {goals.length > 0 && <CoachTour id="today" steps={TOUR} need=".today-list" />}
       <TabBar active="today" />
     </div>
   );
