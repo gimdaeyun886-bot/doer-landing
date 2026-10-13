@@ -1,9 +1,12 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { askCoach, createGoal } from "@/app/goals/actions";
 import { EMPTY_VALUES, KINDS, formatDate, formatMinutes, lockLabels, materialError, type GoalValues } from "@/lib/goals";
 import type { Ask, ChatMessage, Slots } from "@/lib/plan";
+import { ADJUST_SAY_KEY } from "./AdjustChat";
 import { ConfirmForm } from "./ConfirmForm";
 import { LockPicker } from "./LockPicker";
 import { Button, CoachMark, Icon, NavButton, Symbol } from "./ui";
@@ -16,6 +19,8 @@ const HOW = [
   { icon: "lock", title: "고른 앱이 잠겨요", text: "전화·메신저·검색은 열려 있어요" },
   { icon: "camera", title: "인증하면 열려요", text: "과제에 맞는 방법으로 확인해요" },
 ] as const;
+// 새 목표가 아니라 오늘 계획을 줄이거나 미루고 싶다는 말로 보이는 표현.
+const ADJUST_WORDS = /버거|힘들|못 ?하겠|못 ?할 ?것|조정|줄여|미뤄|미루|야근|아파|아프|시간이 없|오늘은 안|빼 ?줘/;
 const SEEN_KEY = "doer.chatted";
 // 대화 도중 다른 화면에 다녀와도 이어서 할 수 있게, 이 기기에 대화를 적어 둔다. 목표를 만들면 지운다.
 export const CHAT_KEY = "doer.chat.v2";
@@ -40,7 +45,9 @@ function toValues(slots: Slots): GoalValues {
 
 // 코치와 자유롭게 대화하며 목표와 사정을 알려 주고, 마지막에 확인 장에서 한 번 확인한다.
 // savedLocks: 이미 골라 둔 잠글 앱. 있으면 코치가 다시 묻지 않는다.
-export function CoachChat({ today, savedLocks }: { today: string; savedLocks: string[] }) {
+// canAdjust: 오늘 남은 할 일이 있어 계획을 조정할 수 있는지.
+export function CoachChat({ today, savedLocks, canAdjust }: { today: string; savedLocks: string[]; canAdjust: boolean }) {
+  const router = useRouter();
   const fresh: Slots = { ...EMPTY, lock_targets: savedLocks.length ? savedLocks : null };
   const [items, setItems] = useState<Item[]>([]);
   const [slots, setSlots] = useState<Slots>(fresh);
@@ -97,6 +104,14 @@ export function CoachChat({ today, savedLocks }: { today: string; savedLocks: st
   function send(message: string, photo?: File, locks?: string[]) {
     const clean = message.trim();
     if (!clean || pending) return;
+    // 대화를 시작하기 전에 오늘이 버겁다는 말을 하면, 그 말을 들고 조정하는 대화로 넘어간다.
+    if (canAdjust && items.length === 0 && !photo && ADJUST_WORDS.test(clean)) {
+      try {
+        sessionStorage.setItem(ADJUST_SAY_KEY, clean);
+      } catch {}
+      router.push("/goals/new?talk=adjust");
+      return;
+    }
     const next: Item[] = [...items, { role: "user", text: clean, image: photo ? URL.createObjectURL(photo) : undefined }];
     setItems(next);
     setText("");
@@ -209,6 +224,16 @@ export function CoachChat({ today, savedLocks }: { today: string; savedLocks: st
             </span>
             <h1>{"안녕하세요, 코치예요.\n어떤 걸 해내고 싶어요?"}</h1>
             <p>시험, 운동, 책, 미뤄 둔 작업 무엇이든요.</p>
+            {canAdjust && (
+              <Link href="/goals/new?talk=adjust" className="row talk-row">
+                <Icon name="swap" size={20} />
+                <span className="row-text">
+                  <b>오늘 계획 조정하기</b>
+                  <small>사정을 말하면 바꿀 방법과 대가를 보여 줘요</small>
+                </span>
+                <Icon name="chevR" size={16} />
+              </Link>
+            )}
             {firstTime && (
               <ol className="how">
                 {HOW.map((step) => (

@@ -1014,3 +1014,21 @@ ul.basis li::before { content: ""; position: absolute; left: 0; top: 4px; bottom
 .tour-actions button { height: 42px; padding: 0 16px; border: 0; border-radius: 10px; font-size: 15px; font-weight: 700; }
 .tour-skip { background: none; color: var(--mut); font-weight: 500 !important; }
 .tour-next { background: var(--coral); color: #fff; }
+
+/* 코치와 대화하는 곳의 들머리 줄, 조정안 목록 */
+.talk-row { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: var(--tint); }
+.chat .adjust-list { margin-top: 0; }
+.chat .under-coach { display: grid; gap: 8px; justify-items: stretch; }
+.chat .under-coach .text-btn { justify-self: start; }
+
+/* ── 오래 하지 않을 때 아래에서 올라오는 코치의 한마디 ── */
+.nudge { position: sticky; bottom: 70px; z-index: 6; order: 8; display: flex; gap: 12px; margin-top: auto; padding: 14px; border-radius: 16px; background: var(--ink); color: #fff; box-shadow: 0 12px 28px -12px #00000066; animation: rise 0.45s var(--ease) backwards; }
+.nudge .coach-mark { background: #ffffff1f; }
+.nudge > div { display: grid; gap: 10px; flex: 1; min-width: 0; }
+.nudge p { font-size: 14px; line-height: 21px; color: #ffffffd9; }
+.nudge b { color: #fff; font-weight: 700; }
+.nudge-actions { display: flex; justify-content: flex-end; gap: 6px; }
+.nudge-actions button, .nudge-actions a { display: inline-flex; align-items: center; height: 36px; padding: 0 12px; border: 0; border-radius: 9px; background: none; color: #ffffffa6; font-size: 14px; font-weight: 600; }
+.nudge-actions a { background: var(--coral); color: #fff; }
+.nudge + .tabbar, .today .nudge ~ .tabbar { margin-top: 0; }
+.composer > .sr-only:first-child + textarea { padding-left: 12px; }

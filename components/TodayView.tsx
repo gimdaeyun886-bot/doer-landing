@@ -1,6 +1,7 @@
 import { CoachTour, type TourStep } from "@/components/CoachTour";
 import { TaskVerify } from "@/components/TaskVerify";
-import { AdjustButton, LockSync, StartButton } from "@/components/TodayActions";
+import { StallNudge } from "@/components/StallNudge";
+import { LockSync, StartButton } from "@/components/TodayActions";
 import { ButtonLink, EmptyState, Icon, TabBar } from "@/components/ui";
 import { formatMinutes, formatToday, lockLabels, tasksOn, type Goal, type Proof } from "@/lib/goals";
 
@@ -17,7 +18,7 @@ const TOUR: TourStep[] = [
   { text: "반가워요. 이 화면 쓰는 법을 30초만 알려 드릴게요." },
   { target: ".today-list", text: "오늘 할 일은 제가 정해 둬요. 하나씩 눌러서 인증하면 돼요." },
   { target: ".today .dock .btn", text: "시작하면 고른 앱이 잠겨요. 다 인증하면 풀리고, 중간에 바로 푸는 방법은 없어요." },
-  { target: ".adjust-open", text: "버거운 날엔 여기서 말해 주세요. 바꿀 방법과 그 대가를 보여 드릴게요." },
+  { target: `.tabbar a[href="/goals/new"]`, text: "버거운 날엔 코치에게 말해 주세요. 바꿀 방법과 그 대가를 보여 드릴게요." },
   { target: `.tabbar a[href="/goals"]`, text: "전체 계획과 제가 그렇게 짠 이유는 목표에서 볼 수 있어요." },
 ];
 
@@ -92,12 +93,12 @@ export function TodayView({ goals, today, proofs, lockTargets, started }: Props)
 
           {!allDone && !started && (
             <div className="dock">
-              <StartButton rows={tasks.map(({ task, goal }) => ({ task, goalTitle: goal.title }))} lockTargets={lockTargets} />
+              <StartButton today={today} rows={tasks.map(({ task, goal }) => ({ task, goalTitle: goal.title }))} lockTargets={lockTargets} />
             </div>
           )}
         </>
       )}
-      <AdjustButton show={tasks.length > 0 && !allDone} />
+      <StallNudge today={today} left={left} started={started} />
       {goals.length > 0 && <CoachTour id="today" steps={TOUR} need=".today-list" />}
       <TabBar active="today" />
     </div>

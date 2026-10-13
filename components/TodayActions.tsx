@@ -2,10 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { applyAdjustment, requestAdjustment, startToday, type AdjustState } from "@/app/goals/actions";
-import { LIMITS, VERIFY_TYPES, lockLabels, verifyTypeOf, type AdjustOption, type PlanTask } from "@/lib/goals";
+import { startToday } from "@/app/goals/actions";
+import { VERIFY_TYPES, lockLabels, verifyTypeOf, type PlanTask } from "@/lib/goals";
 import { native } from "@/lib/native";
 import { AccessHelp } from "./SettingsForms";
+import { markStarted } from "./StallNudge";
 import { Button, ButtonLink, Icon, Notice } from "./ui";
 
 type Row = { task: PlanTask; goalTitle: string };
@@ -19,7 +20,7 @@ export function LockSync({ active, targets }: { active: boolean; targets: string
 }
 
 // 시작 전 확인: 오늘 할 일, 과제마다 정해진 인증 방식, 잠길 앱을 한 번 보고 시작한다.
-export function StartButton({ rows, lockTargets }: { rows: Row[]; lockTargets: string[] }) {
+export function StartButton({ today, rows, lockTargets }: { today: string; rows: Row[]; lockTargets: string[] }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -32,6 +33,7 @@ export function StartButton({ rows, lockTargets }: { rows: Row[]; lockTargets: s
     if (app && lockTargets.length && !app.hasAccess()) return setNeedAccess(true);
     startTransition(async () => {
       await startToday();
+      markStarted(today);
       dialog.current?.close();
       router.refresh();
     });
@@ -105,112 +107,6 @@ export function StartButton({ rows, lockTargets }: { rows: Row[]; lockTargets: s
             나중에
           </Button>
         </div>
-      </dialog>
-    </>
-  );
-}
-
-// 버거운 날: 사정을 말하면 코치가 조정안과 대가를 보여 준다. 고르거나, 그대로 하기로 한다.
-// 이 조각은 오늘 할 일이 바뀌어도 화면에서 사라지지 않는 자리에 둔다. 그래야 조정 결과를 끝까지 보여 줄 수 있다.
-export function AdjustButton({ show }: { show: boolean }) {
-  const dialog = useRef<HTMLDialogElement>(null);
-  const router = useRouter();
-  const [reason, setReason] = useState("");
-  const [state, setState] = useState<AdjustState>({});
-  const [done, setDone] = useState<AdjustOption | null>(null);
-  const [pending, startTransition] = useTransition();
-
-  const ask = () =>
-    startTransition(async () => {
-      setState(await requestAdjustment(reason));
-    });
-  const choose = (option: AdjustOption) =>
-    startTransition(async () => {
-      const result = await applyAdjustment(reason, option);
-      if (!result.ok) return setState((current) => ({ ...current, message: result.message }));
-      // 화면은 확인을 누른 뒤에 새로 그린다. 먼저 그리면 이 창이 결과를 보여 주기 전에 사라질 수 있다.
-      setDone(option);
-    });
-  function close() {
-    dialog.current?.close();
-    if (done) router.refresh();
-    setState({});
-    setDone(null);
-    setReason("");
-  }
-
-  return (
-    <>
-      {show && (
-        <button type="button" className="row adjust-open" onClick={() => dialog.current?.showModal()}>
-          <Icon name="chat" size={20} />
-          <span className="row-text">
-            <b>오늘 계획이 버거워요</b>
-            <small>코치에게 말하고 조정안 받기</small>
-          </span>
-          <Icon name="chevR" size={16} />
-        </button>
-      )}
-      <dialog ref={dialog} className="sheet adjust-sheet" aria-labelledby="adjust-title" onClose={() => {
-        if (done) router.refresh();
-        setState({});
-        setDone(null);
-      }}>
-        <span className="sheet-grip" aria-hidden="true" />
-        {done ? (
-          <>
-            <h2 id="adjust-title">이렇게 바꿨어요</h2>
-            <p className="sheet-target">{done.label}</p>
-            <p>{done.impact}</p>
-            <div className="sheet-actions">
-              <Button type="button" variant="quiet" onClick={close}>
-                확인
-              </Button>
-            </div>
-          </>
-        ) : state.options ? (
-          <>
-            <h2 id="adjust-title">어떻게 할까요?</h2>
-            <p>{state.reply}</p>
-            {state.message && <Notice tone="error">{state.message}</Notice>}
-            <ul className="adjust-list">
-              {state.options.map((option) => (
-                <li key={option.label}>
-                  <button type="button" disabled={pending} onClick={() => choose(option)}>
-                    <b>{option.label}</b>
-                    <span>
-                      <Icon name="swap" size={14} />
-                      {option.impact}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <div className="sheet-actions">
-              <Button type="button" variant="quiet" disabled={pending} onClick={close}>
-                {pending ? "바꾸는 중…" : "그대로 할게요"}
-              </Button>
-            </div>
-          </>
-        ) : (
-          <>
-            <h2 id="adjust-title">무슨 일이 있었나요?</h2>
-            <p>코치가 바꿀 방법과 그 대가를 보여 줘요. 고르기 전에는 바뀌지 않아요.</p>
-            {state.message && <Notice tone="error">{state.message}</Notice>}
-            <label className="sr-only" htmlFor="adjust-reason">
-              사정
-            </label>
-            <textarea id="adjust-reason" className="proof-text" rows={3} maxLength={LIMITS.reason} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="예: 야근해서 30분밖에 못 내요" />
-            <div className="sheet-actions">
-              <Button type="button" onClick={ask} disabled={pending || reason.trim().length < 4} aria-busy={pending}>
-                {pending ? "방법을 찾는 중…" : "코치에게 말하기"}
-              </Button>
-              <Button type="button" variant="quiet" onClick={close}>
-                그대로 할게요
-              </Button>
-            </div>
-          </>
-        )}
       </dialog>
     </>
   );
