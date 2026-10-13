@@ -1,19 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 잠금 화면 바탕: 검정. 그림 뒤쪽에서만 차가운 회색 빛이 겨우 보일 만큼 번진다. -->
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item>
-        <shape><solid android:color="#000000" /></shape>
-    </item>
-    <item>
-        <shape>
-            <gradient
-                android:type="radial"
-                android:centerX="0.5"
-                android:centerY="0.34"
-                android:gradientRadius="70%p"
-                android:startColor="#15171A"
-                android:centerColor="#0A0B0C"
-                android:endColor="#00000000" />
-        </shape>
-    </item>
-</layer-list>
+<!-- 잠금 화면 그림 위에 덮는 막: 위는 그림이 그대로 보이고, 글이 놓이는 아래쪽은 검정에 잠긴다. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <gradient
+        android:angle="90"
+        android:startColor="#FF000000"
+        android:centerColor="#B3000000"
+        android:centerY="0.45"
+        android:endColor="#00000000" />
+</shape>
