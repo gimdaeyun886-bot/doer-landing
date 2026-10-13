@@ -24,8 +24,8 @@
 
         <ImageView
             android:id="@+id/lock_mark"
-            android:layout_width="232dp"
-            android:layout_height="232dp"
+            android:layout_width="280dp"
+            android:layout_height="280dp"
             android:scaleType="fitCenter"
             android:src="@drawable/lock_art" />
 
@@ -33,7 +33,7 @@
             android:id="@+id/lock_where"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
+            android:layout_marginTop="0dp"
             android:background="@drawable/bg_lock_pill"
             android:paddingStart="13dp"
             android:paddingTop="6dp"
