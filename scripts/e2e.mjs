@@ -103,7 +103,7 @@ try {
   await page.fill("#deadline", inDays(30));
   await next();
   await page.fill("#daily_minutes", "5");
-  for (const day of await page.locator('input[name="weekdays"]:checked').all()) await day.uncheck({ force: true });
+  while (await page.locator('input[name="weekdays"]:checked').count()) await page.locator('input[name="weekdays"]:checked').first().click({ force: true });
   await next();
   await page.locator("#weekdays-error").waitFor();
   await shot("1-step-when-error");

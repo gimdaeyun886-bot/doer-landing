@@ -70,7 +70,7 @@ export default async function GoalsPage({ searchParams }: { searchParams: Search
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/assets/study-character-v4.webp" width={220} height={196} alt="" />
           <h1>해내고 싶은 일,{"\n"}하나만 적어 볼까요?</h1>
-          <p>목표와 하루에 낼 시간을 적으면 남은 기간에 쓸 수 있는 시간을 계산해 드려요.</p>
+          <p>목표와 하루에 낼 시간을 적으면 목표일까지 몇 시간을 쓸 수 있는지 계산해 드려요.</p>
           <ButtonLink href="/goals/new">첫 목표 적기</ButtonLink>
         </div>
       </main>

@@ -151,7 +151,7 @@ button { cursor: pointer; }
 .goal-card:hover { box-shadow: 0 0 0 1px var(--faint), 0 6px 18px -12px #00000040; }
 .goal-card:active { transform: scale(0.99); }
 .goal-card > .icon { color: var(--faint); }
-.badge { display: grid; place-items: center; flex: none; width: 56px; height: 56px; border-radius: 14px; font-size: 14px; font-weight: 800; letter-spacing: -0.02em; }
+.badge { display: grid; place-items: center; flex: none; width: 56px; height: 56px; padding: 4px; border-radius: 14px; font-size: 14px; font-weight: 800; line-height: 17px; letter-spacing: -0.02em; text-align: center; }
 .badge-coral { background: var(--coral-soft); color: var(--coral); }
 .badge-green { background: var(--green-soft); color: var(--green); }
 .badge-neutral { background: var(--tint); color: var(--sub); }

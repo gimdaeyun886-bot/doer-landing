@@ -83,10 +83,6 @@ export default async function GoalPage({ params, searchParams }: { params: Param
               <dd>{goal.schedule}</dd>
             </div>
           )}
-          <div>
-            <dt>쓸 수 있는 시간</dt>
-            <dd>{look.label}</dd>
-          </div>
         </dl>
       </Section>
 

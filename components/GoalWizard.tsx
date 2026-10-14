@@ -13,7 +13,7 @@ type Step = { key: string; question: string; sub: string; fields: GoalField[]; o
 
 const STEPS: Step[] = [
   { key: "title", question: "무엇을 해내고 싶어요?", sub: "시험, 운동, 책, 포트폴리오 무엇이든 좋아요.", fields: ["title"] },
-  { key: "kind", question: "끝나는 날이 있나요?", sub: "목표의 모양에 따라 남은 시간을 다르게 계산해요.", fields: ["deadline"] },
+  { key: "kind", question: "끝나는 날이 있나요?", sub: "목표에 따라 남은 시간을 세는 방식이 달라요.", fields: ["deadline"] },
   { key: "when", question: "언제, 얼마나 할 수 있어요?", sub: "무리하지 않고 지킬 수 있는 만큼만요.", fields: ["weekdays", "daily_minutes", "schedule"] },
   { key: "note", question: "지금은 어디까지 와 있어요?", sub: "지금 수준이나 약한 부분을 적어 두면 나중에 계획을 짤 때 써요.", fields: ["note"], optional: true },
   { key: "lock", question: "할 때 어떤 앱을 잠글까요?", sub: "고른 앱만 잠가요. 나머지는 그대로 쓸 수 있어요.", fields: ["lock_apps"], optional: true },
@@ -65,6 +65,12 @@ export function GoalWizard({ action, today, requestId }: Props) {
     setStep(step + 1);
   }
 
+  // 고치기 시작한 칸의 오류 문구는 바로 지운다.
+  function onInput(event: React.FormEvent<HTMLFormElement>) {
+    const name = (event.target as HTMLInputElement).name as GoalField;
+    if (name && errors[name]) setErrors((prev) => without(prev, [name]));
+  }
+
   // 마지막 단계가 아니면 Enter는 다음 단계로 넘어간다.
   function onKeyDown(event: React.KeyboardEvent<HTMLFormElement>) {
     const target = event.target as HTMLElement;
@@ -74,7 +80,7 @@ export function GoalWizard({ action, today, requestId }: Props) {
   }
 
   return (
-    <form ref={form} action={formAction} onKeyDown={onKeyDown} className="wizard" noValidate aria-busy={pending}>
+    <form ref={form} action={formAction} onKeyDown={onKeyDown} onInput={onInput} onChange={onInput} className="wizard" noValidate aria-busy={pending}>
       <input type="hidden" name="request_id" value={requestId} />
       <div className="topbar">
         {step === 0 ? (
@@ -132,7 +138,7 @@ export function GoalWizard({ action, today, requestId }: Props) {
           <KindField kind={values.kind} deadline={values.deadline} today={today} error={errors.deadline} />
         </section>
         <section data-step="when" hidden={current.key !== "when"}>
-          <WhenField weekdays={values.weekdays} minutes={values.daily_minutes} schedule={values.schedule} errors={errors} />
+          <WhenField weekdays={values.weekdays} minutes={values.daily_minutes} schedule={values.schedule} errors={errors} onTouched={(field) => setErrors((prev) => without(prev, [field]))} />
         </section>
         <section data-step="note" hidden={current.key !== "note"}>
           <NoteField value={values.note} error={errors.note} />

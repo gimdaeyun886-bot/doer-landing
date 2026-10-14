@@ -204,7 +204,7 @@ export function formatDateTime(value: string) {
 // 목록과 상세에서 목표 옆에 붙는 짧은 표시.
 export function goalTag(goal: Pick<Goal, "kind" | "deadline">) {
   if (goal.kind === "ongoing") return "매주";
-  if (goal.kind === "finish" || !goal.deadline) return "완성";
+  if (goal.kind === "finish" || !goal.deadline) return "기한 없음";
   const left = daysLeft(goal.deadline);
   if (left < 0) return "지남";
   return left === 0 ? "D-DAY" : `D-${left}`;

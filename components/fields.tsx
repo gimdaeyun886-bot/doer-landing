@@ -86,7 +86,9 @@ const PRESETS = [
   { label: "매일", days: [0, 1, 2, 3, 4, 5, 6] },
 ];
 
-export function WhenField({ weekdays: initialDays, minutes: initialMinutes, schedule, errors }: { weekdays: number[]; minutes: string; schedule: string; errors: Partial<Record<GoalField, string>> }) {
+type WhenProps = { weekdays: number[]; minutes: string; schedule: string; errors: Partial<Record<GoalField, string>>; onTouched?: (field: GoalField) => void };
+
+export function WhenField({ weekdays: initialDays, minutes: initialMinutes, schedule, errors, onTouched }: WhenProps) {
   const [days, setDays] = useState<number[]>(initialDays);
   const [minutes, setMinutes] = useState(initialMinutes);
   const toggle = (day: number) => setDays((current) => (current.includes(day) ? current.filter((item) => item !== day) : [...current, day]));
@@ -102,7 +104,7 @@ export function WhenField({ weekdays: initialDays, minutes: initialMinutes, sche
           </span>
           <span className="presets">
             {PRESETS.map((preset) => (
-              <button key={preset.label} type="button" className="mini-btn" aria-pressed={preset.days.join() === [...days].sort().join()} onClick={() => setDays(preset.days)}>
+              <button key={preset.label} type="button" className="mini-btn" aria-pressed={preset.days.join() === [...days].sort().join()} onClick={() => (setDays(preset.days), onTouched?.("weekdays"))}>
                 {preset.label}
               </button>
             ))}
@@ -130,7 +132,7 @@ export function WhenField({ weekdays: initialDays, minutes: initialMinutes, sche
           </div>
           <div className="quick" role="group" aria-label="자주 고르는 시간">
             {QUICK_MINUTES.map((item) => (
-              <button key={item} type="button" className="mini-btn" aria-pressed={value === item} onClick={() => setMinutes(String(item))}>
+              <button key={item} type="button" className="mini-btn" aria-pressed={value === item} onClick={() => (setMinutes(String(item)), onTouched?.("daily_minutes"))}>
                 {formatMinutes(item)}
               </button>
             ))}
