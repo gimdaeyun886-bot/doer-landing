@@ -1,1 +1,13 @@
 .vercel
+node_modules
+.next
+out
+next-env.d.ts
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.claude
+
+# 점검 캡처
+design-preview
