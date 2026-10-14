@@ -113,6 +113,8 @@ async function confirmAndCreate(name) {
   const typeError = await page.locator("#material-error").innerText().catch(() => "");
   await page.locator("#material").setInputFiles({ name: "big.png", mimeType: "image/png", buffer: Buffer.alloc(3 * 1024 * 1024 + 10) });
   const sizeError = await page.locator("#material-error").innerText().catch(() => "");
+  await page.locator("#material-error").scrollIntoViewIfNeeded().catch(() => {});
+  await shot(`${name}-file-error`);
   check("허용하지 않는 형식이나 3MB를 넘는 파일은 올리기 전에 막음", Boolean(typeError) && Boolean(sizeError), `${typeError} / ${sizeError}`);
   const started = Date.now();
   await page.locator(".dock .btn").click();
@@ -308,6 +310,8 @@ if (goalUrl) {
   await page.goto(goalUrl);
   await settle();
   const savedTitle = await page.locator(".detail-head h1").innerText();
+  await page.locator(".material-empty").scrollIntoViewIfNeeded().catch(() => {});
+  await shot("4-no-material");
   check("자료 사진 없이 등록하면 상세에 '올린 자료가 없어요'가 보임", (await page.locator(".material-empty").count()) === 1);
   await page.reload();
   await settle();
@@ -407,6 +411,7 @@ if (goalUrl) {
   await settle();
   await page.locator(".topbar button.nav-btn").click();
   await page.waitForTimeout(400);
+  await shot("6-delete-sheet");
   await page.getByRole("button", { name: "지우기", exact: true }).click();
   await page.waitForURL(/\/goals\?notice=deleted/, { timeout: 30000 });
   await page.goto(goalUrl);
@@ -414,9 +419,11 @@ if (goalUrl) {
   check("지운 목표의 주소는 '없는 목표' 화면", /없|찾을 수/.test(await page.locator("body").innerText()));
   await page.goto(BASE + "/goals/abc");
   await settle();
+  await shot("6-not-found");
   check("형식이 틀린 상세 주소도 '없는 목표' 화면", /목표를 찾을 수 없어요/.test(await page.locator("body").innerText()));
   await page.goto(BASE + "/goals");
   await settle();
+  await shot("6-after-delete");
   check("지운 목표는 목록에서 사라짐", (await page.locator(".goal-row").count()) === 0);
 }
 await page.goto(BASE + "/settings");
