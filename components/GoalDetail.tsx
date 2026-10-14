@@ -1,7 +1,7 @@
 import { CoachTour, type TourStep } from "@/components/CoachTour";
 import { ClearChat, DeleteGoalButton, ReplanButton } from "@/components/GoalActions";
 import { PlanCalendar } from "@/components/PlanCalendar";
-import { ButtonLink, NavButton, Notice, Pill, RowLink, Section, kindTone } from "@/components/ui";
+import { ButtonLink, Icon, NavButton, Notice, Pill, RowLink, Section, kindTone } from "@/components/ui";
 import { formatDate, formatMinutes, goalTag, planEnd, type Goal, type Proof } from "@/lib/goals";
 
 type SimpleAction = (prev: { message?: string }, formData: FormData) => Promise<{ message?: string }>;
@@ -22,10 +22,10 @@ const TOUR: TourStep[] = [
   { target: ".detail .dock .btn", text: "이제 오늘 할 일을 보러 가요." },
 ];
 
-type Props = { goal: Goal; today: string; notice?: string; proofs: Proof[]; replan: SimpleAction; remove: SimpleAction };
+type Props = { goal: Goal; today: string; notice?: string; proofs: Proof[]; materialSrc: string | null; replan: SimpleAction; remove: SimpleAction };
 
 // 목표 한 개의 화면. 달력과 고른 날의 할 일이 중심이고, 코치가 이렇게 짠 이유는 한 줄 요약과 함께 따로 둔 화면으로 잇는다.
-export function GoalDetail({ goal, today, notice, proofs, replan, remove }: Props) {
+export function GoalDetail({ goal, today, notice, proofs, materialSrc, replan, remove }: Props) {
   const plan = goal.plan_status === "ready" && goal.plan?.days ? goal.plan : null;
   const end = plan ? planEnd(plan) : null;
   const until = goal.kind === "dated" && goal.deadline ? `${formatDate(goal.deadline)}까지` : goal.kind === "ongoing" ? "매주 반복" : end ? `${formatDate(end)}쯤 끝` : "날짜 없음";
@@ -68,6 +68,20 @@ export function GoalDetail({ goal, today, notice, proofs, replan, remove }: Prop
           <ReplanButton action={replan} label="계획 만들기" />
         </Section>
       )}
+
+      <Section title="올린 자료">
+        {materialSrc ? (
+          <a href={materialSrc} target="_blank" rel="noreferrer" className="material-view" aria-label="올린 자료 크게 보기">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={materialSrc} alt={`${goal.title} 목차·범위 자료`} />
+          </a>
+        ) : (
+          <p className="material-empty">
+            <Icon name="image" size={20} />
+            올린 자료가 없어요. 목표 고치기에서 목차나 범위 사진을 올릴 수 있어요.
+          </p>
+        )}
+      </Section>
 
       <Section title="관리">
         <div className="rows">

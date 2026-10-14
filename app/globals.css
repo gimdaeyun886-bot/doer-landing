@@ -1032,3 +1032,9 @@ ul.basis li::before { content: ""; position: absolute; left: 0; top: 4px; bottom
 .nudge-actions a { background: var(--coral); color: #fff; }
 .nudge + .tabbar, .today .nudge ~ .tabbar { margin-top: 0; }
 .composer > .sr-only:first-child + textarea { padding-left: 12px; }
+
+/* 목표 화면의 올린 자료 */
+.material-view { display: block; overflow: hidden; border-radius: 12px; background: var(--tint); }
+.material-view img { display: block; width: 100%; max-height: 320px; object-fit: contain; }
+.material-empty { display: flex; align-items: center; gap: 10px; padding: 14px; border-radius: 12px; background: var(--tint); color: var(--mut); font-size: 14px; line-height: 21px; }
+.material-empty .icon { flex: none; }

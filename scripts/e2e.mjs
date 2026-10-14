@@ -100,6 +100,20 @@ async function confirmAndCreate(name) {
   await page.waitForSelector(".sheet-list");
   await page.waitForTimeout(500);
   await shot(`${name}-confirm`, true);
+  // 빈 값으로 제출하면 저장되지 않고, 고칠 곳을 알려 준다.
+  const title = await page.inputValue("#title");
+  await page.fill("#title", "");
+  await page.locator(".dock .btn").click();
+  await page.locator(".row-error").first().waitFor({ timeout: 15000 });
+  await shot(`${name}-confirm-empty`, true);
+  check("빈 값으로 제출하면 저장되지 않고 오류 문구가 뜸", /\/goals\/new/.test(page.url()) && /적어 주세요/.test(await page.locator(".row-error").first().innerText()), await page.locator(".row-error").first().innerText());
+  await page.fill("#title", title);
+  // 허용하지 않는 파일은 고르는 순간 걸러 낸다.
+  await page.locator("#material").setInputFiles({ name: "notes.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4") });
+  const typeError = await page.locator("#material-error").innerText().catch(() => "");
+  await page.locator("#material").setInputFiles({ name: "big.png", mimeType: "image/png", buffer: Buffer.alloc(3 * 1024 * 1024 + 10) });
+  const sizeError = await page.locator("#material-error").innerText().catch(() => "");
+  check("허용하지 않는 형식이나 3MB를 넘는 파일은 올리기 전에 막음", Boolean(typeError) && Boolean(sizeError), `${typeError} / ${sizeError}`);
   const started = Date.now();
   await page.locator(".dock .btn").click();
   await page.waitForTimeout(1500);
@@ -290,16 +304,42 @@ await settle();
 await shot("4-goals", true);
 check("목록에 등록한 목표가 보임", (await page.locator(".goal-row").count()) === 1);
 if (goalUrl) {
+  // 새로고침해도 데이터가 그대로 남는다.
+  await page.goto(goalUrl);
+  await settle();
+  const savedTitle = await page.locator(".detail-head h1").innerText();
+  check("자료 사진 없이 등록하면 상세에 '올린 자료가 없어요'가 보임", (await page.locator(".material-empty").count()) === 1);
+  await page.reload();
+  await settle();
+  check("새로고침해도 상세 데이터가 그대로임", (await page.locator(".detail-head h1").innerText()) === savedTitle);
+  await page.goto(BASE + "/goals");
+  await page.reload();
+  await settle();
+  check("새로고침해도 목록 데이터가 그대로임", /정보처리기사/.test(await page.locator(".goal-list").innerText()));
+
   await page.goto(goalUrl + "/edit");
   await settle();
-  // 값이 실제로 달라져야 계획을 다시 짠다.
+  // 값이 실제로 달라져야 계획을 다시 짠다. 제목을 바꾸고 자료 사진도 올린다.
   const minutes = (await page.inputValue('input[name="daily_minutes"]')) === "90" ? "100" : "90";
+  await page.fill("#title", "정보처리기사 실기 합격");
   await page.fill('input[name="daily_minutes"]', minutes);
   await page.fill('[name="schedule"]', "매일 밤 9시 이후 1시간 30분");
+  await page.locator("#material").setInputFiles("public/assets/symbol-light.png");
   await page.locator(".dock .btn").click();
   await page.waitForURL(/notice=/, { timeout: 280000 });
   await settle();
+  await shot("4-after-edit", true);
   check("수정 후 계획을 다시 짬", /notice=replanned/.test(page.url()));
+  check("수정한 제목이 상세에 반영됨", (await page.locator(".detail-head h1").innerText()) === "정보처리기사 실기 합격");
+  const image = page.locator(".material-view img");
+  check(
+    "올린 자료 사진이 Storage에 저장돼 상세에 보임",
+    (await image.count()) === 1 && (await image.evaluate((img) => img.complete && img.naturalWidth > 0)),
+    (await image.getAttribute("src").catch(() => ""))?.split("?")[0].split("/").slice(-3).join("/"),
+  );
+  await page.goto(BASE + "/goals");
+  await settle();
+  check("수정한 제목이 목록에 반영됨", /정보처리기사 실기 합격/.test(await page.locator(".goal-list").innerText()));
 }
 
 {
@@ -372,6 +412,12 @@ if (goalUrl) {
   await page.goto(goalUrl);
   await settle();
   check("지운 목표의 주소는 '없는 목표' 화면", /없|찾을 수/.test(await page.locator("body").innerText()));
+  await page.goto(BASE + "/goals/abc");
+  await settle();
+  check("형식이 틀린 상세 주소도 '없는 목표' 화면", /목표를 찾을 수 없어요/.test(await page.locator("body").innerText()));
+  await page.goto(BASE + "/goals");
+  await settle();
+  check("지운 목표는 목록에서 사라짐", (await page.locator(".goal-row").count()) === 0);
 }
 await page.goto(BASE + "/settings");
 await settle();
