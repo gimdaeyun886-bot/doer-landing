@@ -10,8 +10,9 @@ create table if not exists public.mission_goals (
   title         text        not null check (char_length(title) between 1 and 40),
   kind          text        not null check (kind in ('dated', 'finish', 'ongoing')),
   deadline      date,                                        -- kind가 dated일 때만 있다.
+  weekdays      smallint[]  not null default '{1,2,3,4,5}',  -- 할 수 있는 요일. 0(일)~6(토)
   daily_minutes integer     not null check (daily_minutes between 10 and 600),
-  schedule      text        check (char_length(schedule) <= 120),
+  schedule      text        check (char_length(schedule) <= 120), -- 시간대 메모
   note          text        check (char_length(note) <= 300),
   lock_apps     text[]      not null default '{}' check (cardinality(lock_apps) <= 7),
   material_path text,                                        -- mission-materials 버킷 안의 파일 경로
@@ -20,9 +21,16 @@ create table if not exists public.mission_goals (
   constraint mission_goals_deadline_matches_kind check ((kind = 'dated') = (deadline is not null))
 );
 
--- 목록은 최근 것부터, 종류로 거른다.
+-- 처음 만든 뒤에 더한 칸. 이미 테이블이 있으면 여기서 더한다.
+alter table public.mission_goals add column if not exists weekdays smallint[] not null default '{1,2,3,4,5}';
+alter table public.mission_goals drop constraint if exists mission_goals_weekdays_valid;
+alter table public.mission_goals add constraint mission_goals_weekdays_valid
+  check (cardinality(weekdays) between 1 and 7 and weekdays <@ array[0, 1, 2, 3, 4, 5, 6]::smallint[]);
+
+-- 목록은 최근 것부터, 또는 목표일이 가까운 것부터 보여 주고, 종류로 거른다.
 create index if not exists mission_goals_created_idx on public.mission_goals (created_at desc, id);
 create index if not exists mission_goals_kind_idx on public.mission_goals (kind, created_at desc);
+create index if not exists mission_goals_deadline_idx on public.mission_goals (deadline, created_at desc);
 
 -- 고칠 때마다 수정 시각을 서버가 적는다.
 create or replace function public.mission_goals_touch() returns trigger
