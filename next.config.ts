@@ -6,8 +6,8 @@ const nextConfig: NextConfig = {
     serverActions: { bodySizeLimit: "4mb" },
   },
   async redirects() {
-    // 첫 화면은 목표 목록이다.
-    return [{ source: "/", destination: "/goals", permanent: false }];
+    // 첫 화면은 오늘 할 일이다.
+    return [{ source: "/", destination: "/today", permanent: false }];
   },
 };
 
