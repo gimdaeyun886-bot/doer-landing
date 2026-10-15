@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { safely } from "@/lib/call";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { startToday } from "@/app/goals/actions";
 import { VERIFY_TYPES, lockLabels, verifyTypeOf, type PlanTask } from "@/lib/goals";
@@ -25,14 +26,17 @@ export function StartButton({ today, rows, lockTargets }: { today: string; rows:
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [needAccess, setNeedAccess] = useState(false);
+  const [failed, setFailed] = useState(false);
   const locks = lockLabels(lockTargets);
   const app = typeof window !== "undefined" ? native() : null;
 
   function begin() {
     // 휴대폰 앱에서 잠금 권한이 꺼져 있으면 먼저 켜도록 안내한다.
     if (app && lockTargets.length && !app.hasAccess()) return setNeedAccess(true);
+    setFailed(false);
     startTransition(async () => {
-      await startToday();
+      const result = await safely(() => startToday());
+      if (!result?.ok) return setFailed(true);
       markStarted(today);
       dialog.current?.close();
       router.refresh();
@@ -84,6 +88,7 @@ export function StartButton({ today, rows, lockTargets }: { today: string; rows:
             잠그려면 접근성 권한이 필요해요. 지금 열린 앱이 잠근 앱인지만 확인하고, 화면의 글이나 입력한 내용은 모으지 않아요.
           </Notice>
         )}
+        {failed && <Notice tone="error">시작하지 못했어요. 화면을 새로고침한 뒤 다시 눌러 주세요.</Notice>}
         {!app && <Notice tone="info">웹에서는 앱 잠금이 준비 중이에요. 시작한 기록과 인증은 그대로 남아요.</Notice>}
 
         {needAccess && <AccessHelp />}

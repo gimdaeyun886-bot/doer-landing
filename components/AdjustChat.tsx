@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { CALL_FAILED, safely } from "@/lib/call";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { applyAdjustment, requestAdjustment } from "@/app/goals/actions";
 import { LIMITS, type AdjustOption } from "@/lib/goals";
@@ -39,7 +40,7 @@ export function AdjustChat({ left }: { left: number }) {
     setOptions(null);
     setReason(clean);
     startTransition(async () => {
-      const result = await requestAdjustment(clean);
+      const result = (await safely(() => requestAdjustment(clean))) ?? { message: CALL_FAILED };
       if (!result.options) return say({ role: "coach", text: result.message ?? "방법을 찾지 못했어요. 다시 말해 주세요.", problem: true });
       say({ role: "coach", text: result.reply ?? "이렇게 바꿀 수 있어요." });
       setOptions(result.options);
@@ -63,7 +64,7 @@ export function AdjustChat({ left }: { left: number }) {
     say({ role: "user", text: option.label });
     setOptions(null);
     startTransition(async () => {
-      const result = await applyAdjustment(reason, option);
+      const result = (await safely(() => applyAdjustment(reason, option))) ?? { ok: false, message: CALL_FAILED };
       if (!result.ok) return say({ role: "coach", text: result.message ?? "바꾸지 못했어요. 다시 시도해 주세요.", problem: true });
       say({ role: "coach", text: `바꿨어요. ${option.impact}` });
       setDone(true);

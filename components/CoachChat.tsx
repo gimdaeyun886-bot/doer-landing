@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { CALL_FAILED, safely } from "@/lib/call";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { askCoach, createGoal } from "@/app/goals/actions";
@@ -129,10 +130,10 @@ export function CoachChat({ today, savedLocks, canAdjust }: { today: string; sav
         payload.set("material", photo);
       }
       // 잠글 앱은 코치가 받아 적지 않고, 고르기 창에서 고른 값을 그대로 쓴다.
-      const result = await askCoach(history, locks ? { ...slots, lock_targets: locks } : slots, payload);
-      if (!result.ok) {
+      const result = await safely(() => askCoach(history, locks ? { ...slots, lock_targets: locks } : slots, payload));
+      if (!result || !result.ok) {
         setBroken(true);
-        setItems((current) => [...current, { role: "coach", text: result.message, problem: true }]);
+        setItems((current) => [...current, { role: "coach", text: result ? result.message : CALL_FAILED, problem: true }]);
         return;
       }
       setSlots(result.slots);

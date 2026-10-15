@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { CALL_FAILED, safely } from "@/lib/call";
 import { appealProof, startQuiz, verifyTask, type VerifyState } from "@/app/goals/actions";
 import { LIMITS, VERIFY_TYPES, formatMinutes, materialError, verifyTypeOf, type PlanTask } from "@/lib/goals";
 import { Button, Icon, Notice } from "./ui";
@@ -49,7 +50,7 @@ export function TaskVerify({ goalId, goalTitle, task, proof }: Props) {
   function loadQuiz() {
     setQuizError(null);
     startLoading(async () => {
-      const result = await startQuiz(goalId, task.id);
+      const result = (await safely(() => startQuiz(goalId, task.id))) ?? { message: CALL_FAILED };
       if (result.questions) setQuestions(result.questions);
       else setQuizError(result.message ?? "문제를 만들지 못했어요.");
     });
