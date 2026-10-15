@@ -1,8 +1,8 @@
 # Do-er — 목표 관리 (미션 6)
 
-**배포 URL:** https://doer-mission6.vercel.app
-**GitHub:** https://github.com/gimdaeyun886-bot/doer-landing/tree/mission-6 (`mission-6` 브랜치. `main`은 미션 5)
-**처음 볼 곳:** 배포 URL의 `/goals`. 첫 화면 `/`는 미션 5의 소개 페이지이고 위쪽 메뉴의 "써 보기"로도 들어갈 수 있습니다.
+- **배포 URL:** https://doer-mission6.vercel.app
+- **GitHub:** https://github.com/gimdaeyun886-bot/doer-landing/tree/mission-6 (`mission-6` 브랜치. `main`은 미션 5)
+- **처음 볼 곳:** 배포 URL의 `/goals`. 첫 화면 `/`는 미션 5의 소개 페이지이고 위쪽 메뉴의 "써 보기"로도 들어갈 수 있습니다.
 
 로그인 없이 바로 등록, 목록, 상세, 수정, 삭제를 해 볼 수 있습니다. 모든 데이터는 Supabase에 저장됩니다.
 
