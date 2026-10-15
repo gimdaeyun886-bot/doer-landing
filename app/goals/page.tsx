@@ -36,11 +36,10 @@ export default async function GoalsPage({ searchParams }: { searchParams: Search
 
   const brand = (
     <div className="brandbar">
-      {/* 첫 화면은 정적 랜딩이라 Link 대신 a로 간다. */}
-      <a href="/" className="wordmark" aria-label="Do-er 소개로">
+      <span className="wordmark">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/assets/original-wordmark.png" width={78} height={23} alt="do-er" />
-      </a>
+      </span>
       <Link href="/goals/new" className="add-btn">
         <Icon name="plus" size={16} weight={2.4} />새 목표
       </Link>

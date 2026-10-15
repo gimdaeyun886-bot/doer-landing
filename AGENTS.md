@@ -12,7 +12,7 @@ AI 코딩 도구와 사람이 함께 보는 규칙입니다. 기능 명세와 �
 
 ## 구조
 
-- `public/` — 미션 5의 정적 랜딩. `next.config.ts`의 rewrite로 `/`에서 `public/index.html`을 보여 준다. 앱에서 `/`로 갈 때는 `<Link>`가 아니라 `<a>`를 쓴다.
+- `/`는 `next.config.ts`에서 `/goals`로 보낸다. 미션 5 랜딩과는 별개의 앱이다.
 - `app/goals/page.tsx` — 목록(검색 `q`, 종류 `kind`, 페이지 `page`를 주소에 둔다).
 - `app/goals/new/page.tsx` — 등록. `app/goals/[id]/page.tsx` — 상세. `app/goals/[id]/edit/page.tsx` — 수정.
 - `app/goals/actions.ts` — 등록, 수정, 삭제(Server Actions). 데이터를 바꾸는 일은 여기서만 한다.

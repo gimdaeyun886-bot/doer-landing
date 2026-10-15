@@ -74,11 +74,11 @@ async function remove(url) {
 
 const created = [];
 try {
-  // 0. 첫 화면(미션 5 랜딩)에서 목표 화면으로
+  // 0. 첫 화면은 목표 목록
   console.log(`\n[0] 시작 — ${BASE}`);
   await page.goto(BASE + "/");
   await settle();
-  check("첫 화면은 미션 5 랜딩이고 '써 보기'로 목표 화면에 갈 수 있음", (await page.locator('a[href="/goals"]').count()) > 0);
+  check("배포 주소를 열면 바로 목표 목록으로 감", /\/goals$/.test(page.url()));
   await page.goto(BASE + "/goals");
   await settle();
   await shot("0-list");
