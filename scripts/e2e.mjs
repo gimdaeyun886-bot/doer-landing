@@ -144,6 +144,8 @@ async function confirmAndCreate(name) {
 // 점검하는 날에는 할 일이 있어야 하므로, 쉬는 요일은 오늘이 아닌 평일로 잡는다.
 const OFF_DAY = new Date().getDay() === 3 ? "목요일" : "수요일";
 const TAIL = false;
+let goalUrl = null;
+try {
 // 0. 첫 화면과 코치
 console.log("\n[0] 첫 화면과 코치");
 await page.goto(BASE + "/");
@@ -184,7 +186,6 @@ const first = TAIL ? { ready: false, lockAsked: false } : await talk("11월 15�
 if (!TAIL) check("코치가 대화로 목표를 알아듣고 확인 단계까지 감", first.ready);
 if (!TAIL) check("첫 대화에서 잠글 앱을 물음", first.lockAsked);
 if (!TAIL) check("앱을 찾는 동안 창 크기와 입력칸 위치가 그대로임", sheetStable === true);
-let goalUrl = null;
 if (first.ready) {
   goalUrl = await confirmAndCreate("1");
   const cells = await page.locator('.cal-cell i[data-kind="tasks"]').count();
@@ -410,6 +411,20 @@ if (goalUrl) {
   await settle();
   await shot("6-after-delete");
   check("지운 목표는 목록에서 사라짐", (await page.locator(".goal-row").count()) === 0);
+}
+} catch (error) {
+  check("점검 도중 멈춤", false, String(error?.message ?? error).split(/\r?\n/)[0]);
+  await shot("error", true).catch(() => {});
+} finally {
+  // 도중에 멈췄어도 점검용 목표를 지워 데모를 비워 둔다.
+  if (goalUrl) {
+    await page.goto(goalUrl).catch(() => {});
+    if (await page.locator(".topbar button.nav-btn").count().catch(() => 0)) {
+      await page.locator(".topbar button.nav-btn").click();
+      await page.getByRole("button", { name: "지우기", exact: true }).click();
+      await page.waitForURL(/notice=deleted/, { timeout: 30000 }).catch(() => {});
+    }
+  }
 }
 const failed = results.filter((result) => !result.ok).length;
 console.log(`\n${results.length - failed}/${results.length} 통과`);

@@ -242,6 +242,10 @@ export async function deleteGoal(id: string, _prev: { message?: string }, _formD
   }
   await removeFiles([data?.material_path as string | null | undefined]);
 
+  // 공용 데모라, 목표가 하나도 남지 않으면 잠글 앱과 시작 기록도 처음 상태로 돌린다. 다음 방문자가 빈 데모에서 시작한다.
+  const { count } = await (await getSupabase()).from(TABLES.goals).select("id", { count: "exact", head: true });
+  if (count === 0) await saveSettings({ lock_targets: [], lock_date: null });
+
   revalidatePath("/goals");
   revalidatePath("/today");
   redirect("/goals?notice=deleted");
