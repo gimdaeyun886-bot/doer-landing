@@ -327,7 +327,12 @@ if (goalUrl) {
   const image = page.locator(".material-view img");
   check(
     "올린 자료 사진이 Storage에 저장돼 상세에 보임",
-    (await image.count()) === 1 && (await image.evaluate((img) => img.complete && img.naturalWidth > 0)),
+    (await image.count()) === 1 &&
+      (await image.evaluate((img) => (img.complete && img.naturalWidth > 0) || new Promise((resolve) => {
+        img.onload = () => resolve(img.naturalWidth > 0);
+        img.onerror = () => resolve(false);
+        setTimeout(() => resolve(false), 15000);
+      }))),
     (await image.getAttribute("src").catch(() => ""))?.split("?")[0].split("/").slice(-3).join("/"),
   );
   await page.goto(BASE + "/goals");
