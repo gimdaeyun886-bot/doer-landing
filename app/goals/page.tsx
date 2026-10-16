@@ -61,7 +61,7 @@ export default async function GoalsPage({ searchParams }: { searchParams: Search
       </header>
       {search.notice === "deleted" && <Notice tone="success">목표를 지웠어요.</Notice>}
 
-      {(total > 5 || filtered) && (
+      {(total > 0 || filtered) && (
         <>
           <form className="search" action="/goals" role="search">
             <label className="sr-only" htmlFor="q">

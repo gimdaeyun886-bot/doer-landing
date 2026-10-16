@@ -30,6 +30,7 @@ AI 코딩 도구와 사람이 함께 보는 규칙입니다. 기능 명세와 �
 - `lib/plan.ts` — AI 호출(대화, 사진 읽기, 계획, 인증 판정, 조정안)과 사용량 상한. 서버 전용.
 - `lib/supabase.ts` — Supabase 연결과 조회, 테이블 이름(`TABLES`). 서버 전용.
 - `lib/native.ts` — 안드로이드 앱이 열어 주는 기능. 웹에서는 없다.
+- `lib/call.ts` — 브라우저에서 Server Action을 부를 때 쓴다. 요청이 실패해도 화면이 말없이 멈추지 않게 안내 문구를 돌려준다.
 
 ## 데이터 (supabase/schema.sql)
 
@@ -47,6 +48,7 @@ AI 코딩 도구와 사람이 함께 보는 규칙입니다. 기능 명세와 �
 - 이미지는 JPG, PNG, WEBP, 3MB 이하만 받는다.
 - Server Action이 끝나면 `revalidatePath` 후 `redirect`한다. `redirect`는 try/catch 밖에서 부른다.
 - 오류 메시지는 사용자가 이해할 수 있는 한국어 문장으로 쓰고, 원인 상세는 서버 로그에만 남긴다.
+- 브라우저에서 Server Action을 직접 부를 때(대화, 조정, 시작 등)는 `safely`로 감싸, 요청이 실패하면 "답을 받지 못했어요" 안내를 보여 준다.
 - AI 사용은 데모 전체 기준으로 막는다(`lib/plan.ts`의 `blockedBy`): 종류별 하루 횟수, 최근 7일 금액(`AI_BUDGET_USD`). 기록과 합계는 DB 함수 `mission_ai_log`, `mission_ai_usage`로만 다룬다. AI가 막혀도 "직접 적기"로 목표를 등록할 수 있어야 한다.
 
 ## 환경 변수

@@ -294,6 +294,13 @@ await page.goto(BASE + "/goals");
 await settle();
 await shot("4-goals", true);
 check("목록에 등록한 목표가 보이고, 두 번 연달아 저장해도 하나만 생김", (await page.locator(".goal-row").count()) === 1);
+check("목록에 검색창과 종류 필터가 보임", (await page.locator("form.search").count()) === 1 && (await page.locator("nav.filters a").count()) === 4);
+await page.goto(BASE + "/goals?q=" + encodeURIComponent("정보처리기사"));
+await settle();
+check("주소의 검색어(q)로 목표를 찾음", (await page.locator(".goal-row").count()) === 1);
+await page.goto(BASE + "/goals?kind=ongoing");
+await settle();
+check("주소의 종류 필터(kind)로 거름: 매주 반복에는 날짜 있는 목표가 없음", /조건에 맞는 목표가 없어요/.test(await page.locator("body").innerText()));
 if (goalUrl) {
   // 새로고침해도 데이터가 그대로 남는다.
   await page.goto(goalUrl);
