@@ -150,7 +150,7 @@ try {
 console.log("\n[0] 첫 화면과 코치");
 await page.goto(BASE + "/");
 await settle();
-check("주소를 열면 오늘 화면으로 감", /\/today/.test(page.url()));
+check("주소를 열면 바로 오늘 화면이 보임", /오늘 할 일/.test(await page.locator("body").innerText()));
 if (!/아직 계획이 없어요/.test(await page.locator("body").innerText())) {
   console.log("데모 공간에 이미 목표가 있어요. 점검은 빈 공간에서만 돌려요.");
   await browser.close();

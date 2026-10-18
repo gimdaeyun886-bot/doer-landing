@@ -20,7 +20,7 @@ AI 코딩 도구와 사람이 함께 보는 규칙입니다. 기능 명세와 �
 
 ## 구조
 
-- `/`는 `next.config.ts`에서 `/today`로 보낸다.
+- `/`(`app/page.tsx`)는 넘기지 않고 오늘 화면을 바로 보여 준다.
 - `app/today/` — 오늘 할 일, 시작 전 확인, 인증.
 - `app/goals/` — 목록(`page.tsx`), 코치 대화와 확인 장(`new/`, 조정은 `?talk=adjust`), 상세(`[id]/`), 근거(`[id]/why/`), 수정(`[id]/edit/`).
 - `app/goals/actions.ts` — 데이터 변경과 AI 호출은 여기(Server Actions)서만 한다.

@@ -8,6 +8,15 @@ export const metadata: Metadata = {
   title: { default: "Do-er — 계획을, 오늘의 실행으로", template: "%s | Do-er" },
   description: "해내고 싶은 걸 코치에게 말하면, 계획을 짜서 오늘 할 일로 나눠 줘요.",
   icons: { icon: "/assets/symbol-light.png" },
+  // 링크를 붙여 넣었을 때 보이는 미리보기.
+  metadataBase: new URL(process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000"),
+  openGraph: {
+    type: "website",
+    siteName: "Do-er",
+    title: "Do-er — 계획을, 오늘의 실행으로",
+    description: "해내고 싶은 걸 코치에게 말하면, 계획을 짜서 오늘 할 일로 나눠 줘요.",
+    images: [{ url: "/assets/symbol-light.png", alt: "Do-er" }],
+  },
 };
 
 export const viewport: Viewport = { themeColor: "#FBF7F0", width: "device-width", initialScale: 1, viewportFit: "cover" };
