@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { signIn, signInWith, signUp, type AuthState } from "@/app/auth/actions";
 import { native } from "@/lib/native";
-import { Button, Icon, Notice, Symbol } from "./ui";
+import { Art, Button, Icon, Notice, Symbol } from "./ui";
 
 const AGREEMENTS = [
   { name: "agree_terms", label: "이용약관에 동의해요", href: "/terms" },
@@ -79,8 +79,8 @@ export function AuthForm({ bye, providers = [], failed }: { bye?: boolean; provi
   return (
     <div className="screen screen-warm welcome">
       <div className="welcome-top">
-        <span className="hello-mark" aria-hidden="true">
-          <Symbol size={64} />
+        <span className="auth-art" aria-hidden="true">
+          <Art name="still" size={240} priority />
         </span>
         <p className="wordmark">do-er</p>
         <h1>{"계획을,\n오늘의 실행으로"}</h1>

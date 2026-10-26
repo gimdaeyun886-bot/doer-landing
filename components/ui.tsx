@@ -1,4 +1,5 @@
 // 여러 화면에서 반복해 쓰는 작은 UI 조각들.
+import Image from "next/image";
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 
@@ -58,10 +59,34 @@ export function Symbol({ size = 26, dark = false }: { size?: number; dark?: bool
   return <img className="symbol" src={dark ? "/assets/symbol-dark.png" : "/assets/symbol-light.png"} width={size} height={size} alt="" aria-hidden="true" />;
 }
 
+// 그림을 바꾸면 이 값을 올리고 파일 이름도 함께 바꾼다. 이전 그림이 캐시에 남지 않게 하려는 것.
+const ART_VERSION = "v2";
+
+// Do-er 전용 점토 오브제 그림. public/art 아래에 있고, 모두 같은 빛과 재질로 만들었다.
+const ART = {
+  coach: { w: 720, h: 600 },
+  lock: { w: 535, h: 720 },
+  "lock-open": { w: 694, h: 720 },
+  stone: { w: 720, h: 539 },
+  candle: { w: 720, h: 699 },
+  cup: { w: 490, h: 720 },
+  stack: { w: 520, h: 720 },
+  still: { w: 720, h: 687 },
+  goals: { w: 720, h: 513 },
+} as const;
+export type ArtName = keyof typeof ART;
+
+export function Art({ name, size, className = "", priority = false }: { name: ArtName; size: number; className?: string; priority?: boolean }) {
+  const { w, h } = ART[name];
+  return <Image className={`art ${className}`.trim()} src={`/art/${name}.${ART_VERSION}.png`} width={size} height={Math.round((size * h) / w)} alt="" aria-hidden="true" priority={priority} />;
+}
+
+// 코치 자리: 살구빛 원 안의 점토 심볼.
 export function CoachMark({ size = 38 }: { size?: number }) {
   return (
     <span className="coach-mark" style={{ width: size, height: size }} aria-hidden="true">
-      <Symbol size={Math.round(size * 0.7)} />
+      {/* 아주 작은 자리에서는 점토 그림이 얼룩처럼 보여 평면 심볼을 쓴다. */}
+      {size >= 44 ? <Art name="coach" size={Math.round(size * 0.78)} /> : <Symbol size={Math.round(size * 0.64)} />}
     </span>
   );
 }
@@ -88,10 +113,10 @@ export function Notice({ tone = "info", children }: { tone?: "info" | "success" 
   );
 }
 
-export function EmptyState({ title, children, action }: { title: string; children?: ReactNode; action?: ReactNode }) {
+export function EmptyState({ title, children, action, art = "still" }: { title: string; children?: ReactNode; action?: ReactNode; art?: ArtName }) {
   return (
     <div className="empty">
-      <CoachMark size={56} />
+      <Art name={art} size={168} />
       <h2>{title}</h2>
       {children && <p>{children}</p>}
       {action}
@@ -120,7 +145,7 @@ export function TabBar({ active }: { active: "today" | "goals" | "records" | "me
       <div className="tabbar-inner">
         {tabs.map((tab) => (
           <Link key={tab.key} href={tab.href} aria-current={tab.key === active ? "page" : undefined}>
-            <Icon name={tab.icon} size={22} weight={tab.key === active ? 2.1 : 1.7} />
+            <Icon name={tab.icon} size={22} weight={1.9} />
             <span>{tab.label}</span>
           </Link>
         ))}

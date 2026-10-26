@@ -51,7 +51,9 @@ AI 코딩 도구와 사람이 함께 보는 작업 규칙입니다. 기능 명�
 
 ## 화면 규칙
 
-- 색과 글꼴은 `app/globals.css`의 변수를 쓴다. 흰 바탕에 회색 단계, 강조는 코랄 하나. 코랄은 눌러야 하는 것과 잠금, 초록은 인증 끝, 빨강은 문제.
+- 디자인은 "따뜻한 고급스러움"이다. 아이보리 바탕(#FAF7F2) 위에 흰 카드, 갈색 기운의 옅은 그림자, 테라코타 코랄 하나, 세이지 초록, 글꼴은 Pretendard. 푸른 회색을 쓰지 않는다. 값은 `app/globals.css` 맨 아래 "따뜻한 고급스러움"과 `replica/design/tokens.json`이 기준이다.
+- 코랄 채움은 화면당 한 곳, 평평하게(그라데이션·색 그림자 없이). 흰 글자를 올릴 때는 18.7px 이상 굵게.
+- 그림은 `public/art`의 점토 오브제만 쓴다(`components/ui.tsx`의 `Art`). GPT(gpt-image-2)로 만들고 `design-preview/concepts/style.txt`의 스타일을 지킨다. 새로 만들면 `scripts/art-trim.mjs`로 여백을 자르고, 바꿀 때는 `ART_VERSION`과 파일 이름의 판 번호를 올린다.
 - 새 화면은 `components/ui.tsx`의 부품(`Section`, `RowLink`, `Button`, `Notice`, `EmptyState`)과 `globals.css` 맨 아래 "새 화면 규칙"의 클래스(`.section`, `.rows`, `.row`, `.status`, `.facts`, `.bullets`)로 만든다. 카드 안에 카드를 넣지 않는다.
 - 한 화면에는 지금 할 일에 필요한 것만 둔다. 설명 문단을 붙이지 않고, 길어지는 내용은 다른 화면이나 접힌 줄로 보낸다.
 - 줄이지 않는 고지: 잠금을 바로 풀 수 없다는 것, 조정의 대가, 접근성 권한이 보는 범위, 인증 사진 보관 기간(7일), 가입 동의 3가지. 시작 전 확인 창과 동의 화면에 그대로 둔다.

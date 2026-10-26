@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { startToday } from "@/app/goals/actions";
 import { VERIFY_TYPES, lockLabels, verifyTypeOf, type PlanTask } from "@/lib/goals";
-import { native } from "@/lib/native";
+import { native, isIOS } from "@/lib/native";
 import { AccessHelp } from "./SettingsForms";
 import { markStarted } from "./StallNudge";
 import { Button, ButtonLink, Icon, Notice } from "./ui";
@@ -86,7 +86,7 @@ export function StartButton({ today, rows, lockTargets }: { today: string; rows:
             잠그려면 접근성 권한이 필요해요. 지금 열린 앱이 잠근 앱인지만 확인하고, 화면의 글이나 입력한 내용은 모으지 않아요.
           </Notice>
         )}
-        {!app && locks.length > 0 && <Notice tone="info">실제 잠금은 휴대폰에 설치한 Do-er 앱에서만 돼요.</Notice>}
+        {!app && locks.length > 0 && <p className="keep-note">{isIOS() ? "아이폰에서는 아직 앱이 잠기지 않아요. 인증은 그대로 할 수 있어요." : "실제 잠금은 휴대폰에 설치한 Do-er 앱에서 걸려요."}</p>}
 
         {needAccess && <AccessHelp />}
         <div className="sheet-actions">
@@ -102,10 +102,10 @@ export function StartButton({ today, rows, lockTargets }: { today: string; rows:
             </Button>
           ) : (
             <Button type="button" onClick={begin} disabled={pending} aria-busy={pending}>
-              {pending ? "시작하는 중…" : "시작"}
+              {pending ? "시작하는 중…" : locks.length ? "시작하고 잠그기" : "시작하기"}
             </Button>
           )}
-          <Button type="button" variant="quiet" onClick={() => dialog.current?.close()}>
+          <Button type="button" variant="ghost" onClick={() => dialog.current?.close()}>
             나중에
           </Button>
         </div>
@@ -119,5 +119,19 @@ export function SettingsLink() {
     <ButtonLink href="/settings" variant="soft">
       잠글 앱 고르기
     </ButtonLink>
+  );
+}
+
+// 잠금 중: 남은 할 일 가운데 첫 번째의 인증 창을 바로 연다.
+export function VerifyNext() {
+  return (
+    <div className="dock">
+      <Button
+        type="button"
+        onClick={() => document.querySelector<HTMLButtonElement>(".today-row:not([data-state=\"passed\"]):not([data-passed])")?.click()}
+      >
+        인증하기
+      </Button>
+    </div>
   );
 }

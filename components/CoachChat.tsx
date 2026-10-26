@@ -7,9 +7,10 @@ import { askCoach, createGoal } from "@/app/goals/actions";
 import { EMPTY_VALUES, KINDS, formatDate, formatMinutes, lockLabels, materialError, type GoalValues } from "@/lib/goals";
 import type { Ask, ChatMessage, Slots } from "@/lib/plan";
 import { ADJUST_SAY_KEY } from "./AdjustChat";
+import { isIOS } from "@/lib/native";
 import { ConfirmForm } from "./ConfirmForm";
 import { LockPicker } from "./LockPicker";
-import { Button, CoachMark, Icon, NavButton, Symbol } from "./ui";
+import { Art, Button, CoachMark, Icon, NavButton, Symbol } from "./ui";
 
 const EMPTY: Slots = { title: null, kind: null, deadline: null, schedule: null, daily_minutes: null, note: null, facts: [], material_summary: null, lock_targets: null };
 const EXAMPLES = ["11월 15일 정보처리기사 실기, 평일 밤 1시간", "주 3회 아침 30분 달리기를 습관으로", "미뤄 둔 포트폴리오, 이번 달 안에"];
@@ -47,6 +48,9 @@ function toValues(slots: Slots): GoalValues {
 // savedLocks: 이미 골라 둔 잠글 앱. 있으면 코치가 다시 묻지 않는다.
 // canAdjust: 오늘 남은 할 일이 있어 계획을 조정할 수 있는지.
 export function CoachChat({ today, savedLocks, canAdjust }: { today: string; savedLocks: string[]; canAdjust: boolean }) {
+  // 아이폰이면 잠금 단계에서 미리 알린다. 첫 화면을 그린 뒤에 판별해 서버 화면과 어긋나지 않게 한다.
+  const [ios, setIos] = useState(false);
+  useEffect(() => setIos(isIOS()), []);
   const router = useRouter();
   const fresh: Slots = { ...EMPTY, lock_targets: savedLocks.length ? savedLocks : null };
   const [items, setItems] = useState<Item[]>([]);
@@ -220,7 +224,7 @@ export function CoachChat({ today, savedLocks, canAdjust }: { today: string; sav
         {!started && restored && (
           <div className="hello">
             <span className="hello-mark" aria-hidden="true">
-              <Symbol size={64} />
+              <Art name="coach" size={112} priority />
             </span>
             <h1>{"안녕하세요, 코치예요.\n어떤 걸 해내고 싶어요?"}</h1>
             <p>시험, 운동, 책, 미뤄 둔 작업 무엇이든요.</p>
@@ -320,8 +324,8 @@ export function CoachChat({ today, savedLocks, canAdjust }: { today: string; sav
         {canAnswer && ask === "lock" && (
           <div className="quick lock-card under-coach">
             <LockPicker value={picked} onChange={setPicked} />
-            <p className="quick-hint">전화, 메신저, 검색은 잠기지 않아요.</p>
-            <Button type="button" variant="soft" disabled={picked.length === 0} onClick={() => send(`${lockLabels(picked).join(", ")} 잠글게요.`, undefined, picked)}>
+            {ios && <p className="quick-hint">아이폰에서는 아직 앱을 잠글 수 없어요. 계획과 인증은 그대로 쓸 수 있고, 잠금은 안드로이드 앱에서 돼요.</p>}
+            <Button type="button" disabled={picked.length === 0} onClick={() => send(`${lockLabels(picked).join(", ")} 잠글게요.`, undefined, picked)}>
               {picked.length ? "이대로 잠그기" : "잠글 앱을 골라 주세요"}
             </Button>
             <button type="button" className="text-btn" onClick={() => send("잠글 앱은 없어요.", undefined, [])}>

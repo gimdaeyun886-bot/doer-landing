@@ -1,4 +1,4 @@
-import { Section } from "@/components/ui";
+import { Art, Section } from "@/components/ui";
 import { formatDay, weekdayOf } from "@/lib/goals";
 import type { DayRecord, DayState } from "@/lib/streak";
 
@@ -7,12 +7,18 @@ const STATE_LABEL: Record<DayState, string> = { done: "끝냄", adjusted: "조�
 // 지난 일주일의 숫자로 코치가 건네는 한마디. AI를 부르지 않고 규칙으로 만든다.
 function coachLine(days: DayRecord[]) {
   const work = days.filter((day) => day.state !== "rest" && day.state !== "pending" && day.state !== "before");
-  const kept = work.filter((day) => day.state === "done" || day.state === "adjusted").length;
+  // 지킨 날: 할 일을 모두 인증한 날, 또는 조정한 뒤 남은 것을 인증한 날. 조정으로 할 일을 모두 옮긴 날은 지킨 날로 세지 않는다.
+  const kept = work.filter((day) => day.state === "done" || (day.state === "adjusted" && day.passed > 0)).length;
   const missed = work.filter((day) => day.state === "missed");
   if (!work.length) return "아직 돌아볼 날이 없어요. 오늘부터 하루씩 쌓여요.";
-  if (!missed.length) return `할 일이 있던 ${work.length}일을 모두 지켰어요. 이 흐름 그대로 가요.`;
+  // 칭찬은 숫자와 맞을 때만. 조정한 날은 따로 밝힌다.
+  const moved = work.filter((day) => day.state === "adjusted" && day.passed === 0).length;
+  const adjusted = work.filter((day) => day.state === "adjusted").length - moved;
+  const note = (adjusted ? ` 그중 ${adjusted}일은 코치와 조정한 날이에요.` : "") + (moved ? ` ${moved}일은 할 일을 다른 날로 옮겼어요.` : "");
+  if (!kept) return `아직 인증으로 지킨 날은 없어요.${note}`;
+  if (!missed.length && kept === work.length) return `할 일이 있던 ${work.length}일을 모두 지켰어요.${note}`;
   const last = missed[missed.length - 1];
-  return `${work.length}일 가운데 ${kept}일을 지켰어요. ${weekdayOf(last.date)}요일이 비었는데, 그날이 버거웠다면 다음엔 코치에게 미리 말해 주세요.`;
+  return `${work.length}일 가운데 ${kept}일을 지켰어요.${note} ${weekdayOf(last.date)}요일이 비었는데, 버거운 날엔 시작하기 전에 코치에게 말해 주세요.`;
 }
 
 // 기록 화면의 본문: 한 주 막대와 숫자 타일.
@@ -71,6 +77,7 @@ export function RecordsView({ week, streak, proofs }: { week: DayRecord[]; strea
                 </div>
               </dl>
             </Section>
+      <Art name="stack" size={150} className="records-art" />
     </>
   );
 }

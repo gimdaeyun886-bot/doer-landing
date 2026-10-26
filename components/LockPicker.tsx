@@ -81,7 +81,7 @@ export function LockPicker({ value, onChange, name }: { value: string[]; onChang
                 {app.parts ? (
                   <div className="chips" role="group" aria-label={`${app.name}에서 잠글 화면`}>
                     {app.parts.map((part) => (
-                      <button key={part} type="button" className="chip-btn chip-sm" aria-pressed={!whole && value.includes(partOf(app, part))} onClick={() => togglePart(app, part)}>
+                      <button key={part} type="button" className="chip-btn chip-sm" aria-pressed={whole || value.includes(partOf(app, part))} disabled={whole} title={whole ? "앱 전체에 들어 있어요" : undefined} onClick={() => togglePart(app, part)}>
                         {part}
                       </button>
                     ))}
@@ -111,7 +111,7 @@ export function LockPicker({ value, onChange, name }: { value: string[]; onChang
 
       <Button
         type="button"
-        variant="quiet"
+        variant="ghost"
         className="btn-sm"
         disabled={full}
         onClick={() => {

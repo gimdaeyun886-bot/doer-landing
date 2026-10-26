@@ -250,7 +250,7 @@ if (rowCount && !TAIL) {
   await shot("2-start-sheet");
   const sheetText = await page.locator("dialog.start-sheet[open]").innerText();
   check("시작 전에 할 일·잠기는 곳·바로 풀 수 없음·사진 보관을 알려 줌", /인스타그램 릴스/.test(sheetText) && /바로 푸는 방법은 없어요/.test(sheetText) && /7일 뒤 지워요/.test(sheetText) && /인증/.test(sheetText));
-  await page.getByRole("button", { name: "시작", exact: true }).click();
+  await page.locator("dialog.start-sheet[open]").getByRole("button", { name: /^시작(하고 잠그기|하기)$/ }).click();
   await page.locator(`.status[data-tone="lock"]`).waitFor({ timeout: 20000 });
   await shot("2-today-locked");
   check("시작하면 '잠금 중'으로 바뀌고 시작 버튼이 사라짐", (await page.getByRole("button", { name: "시작하기" }).count()) === 0);
@@ -369,7 +369,7 @@ if (goalUrl) {
   await page.locator(".nudge").waitFor({ timeout: 8000 });
   await page.waitForTimeout(500);
   await shot("3-nudge");
-  check("오래 하지 않으면 아래에서 코치의 한마디가 뜸", /남았어요/.test(await page.locator(".nudge").innerText()));
+  check("오래 하지 않으면 아래에서 코치의 한마디가 뜸", /남아 있어요|조정할 수 있어요/.test(await page.locator(".nudge").innerText()));
   await page.locator(".nudge").getByRole("link", { name: "코치와 얘기하기" }).click();
   await page.waitForURL(/talk=adjust/);
   await page.locator("#adjust-say").fill("오늘 갑자기 야근이 잡혀서 30분밖에 못 내요");

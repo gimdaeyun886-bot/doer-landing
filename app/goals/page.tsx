@@ -87,7 +87,7 @@ export default async function GoalsPage({ searchParams }: { searchParams: Search
             찾는 말을 바꿔 보세요.
           </EmptyState>
         ) : (
-          <EmptyState title="아직 목표가 없어요" action={<ButtonLink href="/goals/new">코치에게 목표 말하기</ButtonLink>}>
+          <EmptyState title="아직 목표가 없어요" art="goals" action={<ButtonLink href="/goals/new">코치에게 목표 말하기</ButtonLink>}>
             하나만 말해 주세요. 계획은 코치가 짜요.
           </EmptyState>
         )

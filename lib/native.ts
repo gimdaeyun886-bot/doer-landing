@@ -17,6 +17,12 @@ export function native(): Bridge | null {
   return (window as unknown as { DoerNative?: Bridge }).DoerNative ?? null;
 }
 
+// 아이폰·아이패드 브라우저. 잠금은 안드로이드 앱에서만 되므로 이 경우 미리 알린다.
+export function isIOS() {
+  if (typeof navigator === "undefined") return false;
+  return /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
 export function installedApps(): InstalledApp[] {
   try {
     const list = JSON.parse(native()?.getApps() ?? "[]") as InstalledApp[];

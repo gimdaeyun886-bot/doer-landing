@@ -64,7 +64,13 @@ export function StallNudge({ today, left, started }: { today: string; left: numb
       <CoachMark size={36} />
       <div>
         <p>
-          <b>아직 {left}가지가 남았어요.</b> 오늘이 버거우면 저와 얘기해서 조정해요.
+          {started ? (
+            <>
+              오늘이 버거우면 저와 조정할 수 있어요. 바꿀 방법과 그 대가를 보여 드릴게요.
+            </>
+          ) : (
+            <>오늘이 버거우면 시작하기 전에 저와 조정할 수 있어요.</>
+          )}
         </p>
         <div className="nudge-actions">
           <button type="button" onClick={quiet}>
