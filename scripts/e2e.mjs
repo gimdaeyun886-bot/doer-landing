@@ -392,6 +392,16 @@ if (goalUrl) {
   check("고른 조정안이 오늘 할 일에 반영됨", (await rows.count()) !== beforeCount, `${beforeCount}개 → ${await rows.count()}개`);
 }
 
+// 기록 탭: 한 주 막대와 숫자
+console.log("\n[기록]");
+await page.goto(BASE + "/records");
+await settle();
+await shot("5-records", true);
+check("기록 화면에 최근 일주일 칸 7개와 숫자 타일이 보임", (await page.locator(".week li").count()) === 7 && (await page.locator(".tiles div").count()) === 4);
+await page.goto(BASE + "/today");
+await settle();
+check("오늘 화면에 연속 기록이 보임", (await page.locator(".streak-badge").count()) === 1, await page.locator(".streak-badge").innerText().catch(() => ""));
+
 // 5. 내 정보: 잠글 앱 바꾸기, 약관
 console.log("\n[5] 내 정보");
 await page.goto(BASE + "/settings");

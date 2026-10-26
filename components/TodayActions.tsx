@@ -12,10 +12,12 @@ import { Button, ButtonLink, Icon, Notice } from "./ui";
 type Row = { task: PlanTask; goalTitle: string };
 
 // 휴대폰 앱에 오늘의 잠금 상태를 알려 준다. 브라우저에서는 아무 일도 하지 않는다.
-export function LockSync({ active, targets }: { active: boolean; targets: string[] }) {
+export function LockSync({ active, targets, left }: { active: boolean; targets: string[]; left: number }) {
   useEffect(() => {
     native()?.setLock(active, JSON.stringify(targets));
-  }, [active, targets]);
+    // 잠금 화면과 알림에 남은 할 일 수를 보여 주도록 앱에 알린다. (예전 앱에는 이 기능이 없다)
+    native()?.setLeft?.(left);
+  }, [active, targets, left]);
   return null;
 }
 

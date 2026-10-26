@@ -14,10 +14,12 @@ AI 코딩 도구와 사람이 함께 보는 작업 규칙입니다. 기능 명�
 ## 구조
 
 - `public/` — 정적 랜딩. `next.config.ts`의 rewrite로 `/`에서 `public/index.html`을 보여 준다. Next.js 화면에서 `/`로 갈 때는 `<Link>`가 아니라 `<a>`를 쓴다.
-- `proxy.ts` — 로그인 세션 갱신과 화면 보호(`/today`, `/goals`, `/settings`).
+- `proxy.ts` — 로그인 세션 갱신과 화면 보호(`/today`, `/goals`, `/records`, `/settings`).
 - `app/login`, `app/auth/actions.ts` — 가입(필수 동의 3가지), 로그인, 로그아웃, 탈퇴.
 - `app/goals/` — 코치와 대화(`new/`), 목록, 상세(`[id]/`, 달력 계획), 코치의 근거(`[id]/why/`), 수정(`[id]/edit/`).
-- `app/today/` — 오늘 할 일, 시작 전 확인, 인증, 계획 조정.
+- `app/today/` — 오늘 할 일, 연속 기록, 시작 전 확인, 인증, 다 해낸 순간의 축하(`components/Celebrate.tsx`).
+- `app/records/` — 최근 일주일 기록(`components/RecordsView.tsx`). 하루 상태와 연속 기록 계산은 `lib/streak.ts`.
+- `app/design/` — 개발할 때만 열리는 새 부품 미리보기. 배포에서는 404.
 - `app/settings/`, `app/privacy/`, `app/terms/` — 잠글 앱, 처리방침, 약관.
 - `app/goals/actions.ts` — 데이터 변경과 AI 호출은 여기(Server Actions)서만 한다.
 - `lib/goals.ts` — 타입, 입력 규칙, 날짜 표시. 서버와 브라우저가 함께 쓴다.
@@ -54,6 +56,8 @@ AI 코딩 도구와 사람이 함께 보는 작업 규칙입니다. 기능 명�
 - 한 화면에는 지금 할 일에 필요한 것만 둔다. 설명 문단을 붙이지 않고, 길어지는 내용은 다른 화면이나 접힌 줄로 보낸다.
 - 줄이지 않는 고지: 잠금을 바로 풀 수 없다는 것, 조정의 대가, 접근성 권한이 보는 범위, 인증 사진 보관 기간(7일), 가입 동의 3가지. 시작 전 확인 창과 동의 화면에 그대로 둔다.
 - 목표 화면의 달력 아래에는 코치의 근거 요약 한 줄과 근거 화면(`/goals/[id]/why`)으로 가는 줄을 둔다.
+- 색 값은 `replica/design/tokens.json`이 기준이고 WCAG AA를 넘는다. 바꿀 때는 `python replica-design의 contrast.py`로 확인하고 `globals.css` 맨 아래 "읽기 쉬운 색"을 함께 고친다.
+- 참고 앱 조사와 적용 목록은 `replica/recon.md`, `replica/features.csv`. 남의 로고·아이콘·문구는 쓰지 않는다.
 - 말투는 해요체, 군더더기 없이, 이모지 없이. 사용자를 탓하지 않는다.
 - 화면을 고친 뒤에는 `node scripts/e2e.mjs`로 가입부터 탈퇴까지의 흐름을 점검한다(개발 서버가 3100번에서 떠 있어야 한다).
 - 로딩, 오류, 빈 상태, 없는 주소를 각각 처리한다. 저장 중에는 입력칸과 버튼을 잠근다.

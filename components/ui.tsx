@@ -27,6 +27,7 @@ const ICONS = {
   cal: <><rect x="4" y="5.5" width="16" height="14.5" rx="3.5" /><path d="M8 3.5v4m8-4v4M4 10.5h16" /></>,
   repeat: <path d="m17 4 3 3-3 3M20 7H8a4 4 0 0 0-4 4m3 9-3-3 3-3M4 17h12a4 4 0 0 0 4-4" />,
   today: <><circle cx="12" cy="12" r="8.5" /><path d="m8.3 12.3 2.6 2.6 4.8-5.2" /></>,
+  bars: <path d="M5 19.5V13m4.7 6.5V8.5m4.6 11V11m4.7 8.5V5" />,
   goal: <><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4.2" /><circle cx="12" cy="12" r=".6" /></>,
   chat: <path d="M5 6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5v7a2.5 2.5 0 0 1-2.5 2.5H11l-4 3.5V16A2.5 2.5 0 0 1 5 13.5Z" />,
   trash: <path d="M5 7h14M10 7V5h4v2m-7 0 .8 11a2 2 0 0 0 2 1.9h4.4a2 2 0 0 0 2-1.9L17 7" />,
@@ -106,10 +107,11 @@ export function NavButton({ href, icon, label }: { href: string; icon: IconName;
   );
 }
 
-export function TabBar({ active }: { active: "today" | "goals" | "me" }) {
+export function TabBar({ active }: { active: "today" | "goals" | "records" | "me" }) {
   const tabs = [
     { key: "today", href: "/today", icon: "today", label: "오늘" },
     { key: "goals", href: "/goals", icon: "goal", label: "목표" },
+    { key: "records", href: "/records", icon: "bars", label: "기록" },
     { key: "coach", href: "/goals/new", icon: "chat", label: "코치" },
     { key: "me", href: "/settings", icon: "user", label: "내 정보" },
   ] as const;

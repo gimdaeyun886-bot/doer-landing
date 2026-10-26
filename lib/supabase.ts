@@ -112,6 +112,17 @@ export async function saveSettings(patch: { lock_targets?: string[]; lock_date?:
 
 const PROOF_COLUMNS = "goal_id,task_id,date,kind,passed,reason,image_path,appeal,created_at";
 
+// 연속 기록과 기록 화면용: 그날부터의 인증 기록과 조정한 날.
+export async function listHistory(from: string) {
+  const supabase = await getSupabase();
+  const [proofs, adjustments] = await Promise.all([
+    supabase.from("proofs").select(PROOF_COLUMNS).gte("date", from).limit(2000),
+    supabase.from("adjustments").select("date").gte("date", from).limit(500),
+  ]);
+  if (proofs.error) throw new Error(`인증 기록 조회 실패: ${proofs.error.message}`);
+  return { proofs: (proofs.data ?? []) as Proof[], adjusted: new Set((adjustments.data ?? []).map((row) => row.date as string)) };
+}
+
 export async function listProofs(filter: { goalId?: string; date?: string }) {
   let query = (await getSupabase()).from("proofs").select(PROOF_COLUMNS);
   if (filter.goalId) query = query.eq("goal_id", filter.goalId);

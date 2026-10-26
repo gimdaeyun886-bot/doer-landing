@@ -54,6 +54,24 @@ final class Locks {
         prefs(context).edit().putBoolean("active", active).putString("targets", targetsJson).putString("date", today()).apply();
     }
 
+    /** 오늘 남은 할 일 수. 웹 화면이 알려 준다. 모르면 -1. */
+    static void setLeft(Context context, int left) {
+        prefs(context).edit().putInt("left", left).putString("left_date", today()).apply();
+    }
+
+    static int left(Context context) {
+        SharedPreferences prefs = prefs(context);
+        return today().equals(prefs.getString("left_date", "")) ? prefs.getInt("left", -1) : -1;
+    }
+
+    /** 오늘 잠근 앱을 연 횟수를 하나 올리고, 올린 값을 돌려준다. 기기 안에만 둔다. */
+    static int bumpOpens(Context context) {
+        SharedPreferences prefs = prefs(context);
+        int opens = today().equals(prefs.getString("opens_date", "")) ? prefs.getInt("opens", 0) + 1 : 1;
+        prefs.edit().putInt("opens", opens).putString("opens_date", today()).apply();
+        return opens;
+    }
+
     /** 잠금은 시작한 날에만 유효하다. 날짜가 바뀌면 저절로 풀린다. */
     static boolean active(Context context) {
         SharedPreferences prefs = prefs(context);

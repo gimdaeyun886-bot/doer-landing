@@ -57,6 +57,7 @@ final class LockScreen {
         root = holder;
         leaving = false;
         label(where);
+        info();
 
         // 상태 표시줄과 아래쪽 내비게이션 줄에 글과 버튼이 가리지 않게 띄운다.
         View inside = holder.findViewById(R.id.lock_root);
@@ -134,6 +135,16 @@ final class LockScreen {
 
     private void label(String where) {
         ((TextView) root.findViewById(R.id.lock_where)).setText(where == null || where.isEmpty() ? "잠금 중" : where + " · 잠금 중");
+    }
+
+    /** 막연한 "잠겼어요" 대신, 무엇이 남았고 오늘 몇 번째로 열었는지 알려 준다. 새로 덮을 때만 센다. */
+    private void info() {
+        int left = Locks.left(service);
+        int opens = Locks.bumpOpens(service);
+        String count = "오늘 " + opens + "번째로 열었어요.";
+        String rest = left > 0 ? "남은 할 일 " + left + "가지를 인증하면 열려요." : "오늘 할 일을 모두 인증하면 열려요.";
+        ((TextView) root.findViewById(R.id.lock_body)).setText(rest + "\n" + count);
+        LockNotice.show(service, left);
     }
 
     private int bar(String name) {

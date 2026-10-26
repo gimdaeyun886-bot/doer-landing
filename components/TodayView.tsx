@@ -1,11 +1,12 @@
 import { CoachTour, type TourStep } from "@/components/CoachTour";
 import { TaskVerify } from "@/components/TaskVerify";
 import { StallNudge } from "@/components/StallNudge";
+import { Celebrate, StreakBadge } from "@/components/Celebrate";
 import { LockSync, StartButton } from "@/components/TodayActions";
 import { ButtonLink, EmptyState, Icon, TabBar } from "@/components/ui";
 import { formatMinutes, formatToday, lockLabels, tasksOn, type Goal, type Proof } from "@/lib/goals";
 
-type Props = { goals: Goal[]; today: string; proofs: Proof[]; lockTargets: string[]; started: boolean };
+type Props = { goals: Goal[]; today: string; proofs: Proof[]; lockTargets: string[]; started: boolean; streak: number; tomorrow: string[] };
 
 // 잠그는 곳이 여럿이면 첫 번째만 적고 나머지는 수로 줄인다.
 function shortLocks(targets: string[]) {
@@ -23,7 +24,7 @@ const TOUR: TourStep[] = [
 ];
 
 // 오늘 화면의 본문. 여러 목표의 계획에서 오늘 날짜의 할 일만 꺼내 한 목록으로 보여 준다.
-export function TodayView({ goals, today, proofs, lockTargets, started }: Props) {
+export function TodayView({ goals, today, proofs, lockTargets, started, streak, tomorrow }: Props) {
   const tasks = goals.flatMap((goal) => tasksOn(goal, today).map((task) => ({ task, goal })));
   const proofOf = (goalId: string, taskId: string) => proofs.find((proof) => proof.goal_id === goalId && proof.task_id === taskId) ?? null;
   const passed = tasks.filter(({ task, goal }) => proofOf(goal.id, task.id)?.passed).length;
@@ -34,9 +35,12 @@ export function TodayView({ goals, today, proofs, lockTargets, started }: Props)
 
   return (
     <div className="screen today">
-      <LockSync active={locked} targets={lockTargets} />
+      <LockSync active={locked} targets={lockTargets} left={left} />
       <header className="headline">
-        <p className="date">{formatToday()}</p>
+        <div className="headline-row">
+          <p className="date">{formatToday()}</p>
+          {goals.length > 0 && <StreakBadge streak={streak} doneToday={allDone} />}
+        </div>
         <h1>{allDone ? "오늘 몫을 다 했어요" : "오늘 할 일"}</h1>
       </header>
 
@@ -98,6 +102,7 @@ export function TodayView({ goals, today, proofs, lockTargets, started }: Props)
           )}
         </>
       )}
+      {allDone && <Celebrate today={today} streak={streak} count={tasks.length} tomorrow={tomorrow} />}
       <StallNudge today={today} left={left} started={started} />
       {goals.length > 0 && <CoachTour id="today" steps={TOUR} need=".today-list" />}
       <TabBar active="today" />

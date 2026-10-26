@@ -140,6 +140,13 @@ public class MainActivity extends Activity {
         else super.onBackPressed();
     }
 
+    /** 안드로이드 13부터는 알림을 띄우려면 한 번 허락을 받아야 한다. 잠금을 처음 시작할 때 묻는다. */
+    private void askNotifications() {
+        if (android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            runOnUiThread(() -> requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 11));
+        }
+    }
+
     /** 웹 화면에서 window.DoerNative 로 부르는 기능. */
     private final class Bridge {
         /** 잠글 앱을 고르는 목록. 기기 안에서만 쓰고 서버로 보내지 않는다. */
@@ -198,6 +205,18 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void setLock(boolean active, String targetsJson) {
             Locks.set(MainActivity.this, active, targetsJson);
+            if (active) {
+                askNotifications();
+                LockNotice.show(MainActivity.this, Locks.left(MainActivity.this));
+            } else {
+                LockNotice.hide(MainActivity.this);
+            }
+        }
+
+        @JavascriptInterface
+        public void setLeft(int left) {
+            Locks.setLeft(MainActivity.this, left);
+            if (Locks.active(MainActivity.this)) LockNotice.show(MainActivity.this, left);
         }
     }
 }

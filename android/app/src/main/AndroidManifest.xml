@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 잠금 중일 때 남은 할 일을 상단 알림으로 보여 준다. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- 잠글 앱을 고르는 목록에 설치된 앱을 보여 주기 위한 조회. 목록은 기기 밖으로 보내지 않는다. -->
     <queries>

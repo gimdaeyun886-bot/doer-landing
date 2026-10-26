@@ -6,6 +6,7 @@ type Bridge = {
   hasAccess: () => boolean; // 잠금에 필요한 접근성 권한이 켜져 있는지
   openAccessSettings: () => void;
   setLock: (active: boolean, targetsJson: string) => void;
+  setLeft?: (left: number) => void; // 오늘 남은 할 일 수. 잠금 화면과 알림에 쓴다
   openAppSettings?: () => void; // 이 앱의 정보 화면('제한된 설정 허용'이 있는 곳)
   getSeenIds?: () => string; // 잠근 앱 화면에서 본 요소 이름표(글 내용 아님). 가림막 조정용
   openExternal?: (url: string) => void; // 구글·카카오 로그인 화면을 바깥 브라우저로 연다

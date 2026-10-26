@@ -1042,3 +1042,71 @@ ul.basis li::before { content: ""; position: absolute; left: 0; top: 4px; bottom
 /* 오늘: 시작 버튼은 목록과 합계 바로 아래. 할 일이 적어도 화면 가운데가 비지 않게 한다. */
 .today .dock { order: 0; margin-top: 4px; padding-top: 0; }
 .today .tabbar { margin-top: auto; }
+
+/* ════════════════════════════════════════════════════════════════════
+   읽기 쉬운 색 (replica/design/tokens.json, WCAG AA 확인). 앞의 값을 덮어쓴다.
+   코랄은 흰 글자를 올려도 4.5:1, 연한 바탕 위 코랄 글자는 한 단계 진한 값을 쓴다.
+   ════════════════════════════════════════════════════════════════════ */
+:root {
+  --coral: #cc4a1f;
+  --coral-text: #bf431b;
+  --cta: #cc4a1f;
+  --green: #0f7a4a;
+  --red: #c9302f;
+  --mut: #636d7a;
+}
+.status[data-tone="lock"], .pill-coral, .today-state[data-kind="todo"] { color: var(--coral-text); }
+
+/* 연속 기록 */
+.headline-row { align-items: center; }
+.streak { position: relative; }
+.streak-badge { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px 0 9px; border: 0; border-radius: 999px; background: var(--tint); color: var(--ink); font-size: 13px; font-weight: 700; }
+.streak-badge[data-live] { background: var(--coral-soft); color: var(--coral-text); }
+.streak-badge .symbol { transition: transform 0.25s var(--ease); }
+.streak-badge[aria-expanded="true"] .symbol { transform: rotate(-12deg) scale(1.1); }
+.streak-rule { position: absolute; right: 0; top: 40px; z-index: 6; width: min(280px, 80vw); padding: 12px 14px; border-radius: 12px; background: var(--ink); color: #fff; font-size: 13px; line-height: 20px; box-shadow: 0 10px 28px -12px #00000059; animation: rise 0.25s var(--ease); }
+
+/* 다 해낸 순간 */
+.celebrate { text-align: center; justify-items: center; padding-top: 28px; }
+.celebrate h2 { margin-top: 2px; }
+.celebrate > p { max-width: 30ch; }
+.burst { position: relative; display: grid; place-items: center; width: 120px; height: 120px; margin-bottom: 4px; }
+.burst-mark { display: grid; place-items: center; width: 84px; height: 84px; border-radius: 50%; background: var(--tint); animation: pop 0.7s var(--ease) 0.1s backwards; }
+.burst i { position: absolute; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 3px; background: var(--coral); opacity: 0; animation: fly 0.9s var(--ease) 0.35s; }
+.burst i:nth-child(odd) { background: var(--green); border-radius: 50%; }
+.burst i:nth-child(3n) { background: var(--ink); }
+.celebrate[data-milestone] .burst-mark { background: var(--coral-soft); }
+.celebrate[data-milestone] .burst i { animation-duration: 1.2s; }
+.celebrate-count { color: var(--mut); font-size: 15px; font-weight: 600; }
+.celebrate-count b { display: inline-block; margin-right: 2px; color: var(--ink); font-size: 44px; font-weight: 800; line-height: 48px; letter-spacing: -0.02em; animation: tick 0.45s var(--ease); }
+.celebrate-next { display: grid; gap: 6px; width: 100%; margin-top: 10px; padding: 14px 16px; border-radius: 12px; background: var(--tint); text-align: left; }
+.celebrate-next h3 { margin: 0; color: var(--mut); font-size: 13px; font-weight: 700; }
+@keyframes pop { 0% { transform: scale(0.4); opacity: 0; } 60% { transform: scale(1.12); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes fly { 0% { opacity: 1; transform: rotate(var(--turn)) translateY(0) scale(0.6); } 100% { opacity: 0; transform: rotate(var(--turn)) translateY(-64px) scale(1); } }
+@keyframes tick { from { transform: translateY(14px); opacity: 0; } }
+
+/* 기록 */
+.week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.week li { display: grid; justify-items: center; gap: 8px; color: var(--mut); font-size: 12px; font-weight: 600; }
+.week i { width: 34px; height: 34px; border-radius: 12px; border: 1.5px dashed #d1d6db; }
+.week [data-state="done"] i { border: 0; background: var(--green); }
+.week [data-state="adjusted"] i { border: 2px solid var(--coral); background: var(--coral-soft); }
+.week [data-state="missed"] i { border: 0; background: var(--red-soft); }
+.week [data-state="rest"] i { border: 0; background: var(--tint); }
+.week [data-state="pending"] i { border: 1.5px solid var(--ink); }
+.week [data-state="pending"] span { color: var(--ink); }
+.week-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--mut); font-size: 12px; }
+.week-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.week-legend li::before { content: ""; width: 10px; height: 10px; border-radius: 3px; background: var(--green); }
+.week-legend [data-state="adjusted"]::before { background: var(--coral-soft); box-shadow: inset 0 0 0 1.5px var(--coral); }
+.week-legend [data-state="missed"]::before { background: var(--red-soft); }
+.week-legend [data-state="rest"]::before { background: var(--tint); }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0; }
+.tiles div { display: grid; gap: 4px; padding: 16px; border-radius: 14px; background: var(--tint); }
+.tiles dt { color: var(--mut); font-size: 13px; font-weight: 600; }
+.tiles dd { margin: 0; font-size: 26px; font-weight: 700; line-height: 32px; letter-spacing: -0.02em; }
+.tiles small { margin-left: 3px; color: var(--mut); font-size: 13px; font-weight: 600; }
+.celebrate .sheet-actions { width: 100%; }
+.celebrate .btn:focus-visible { outline-offset: 3px; }
+.week [data-state="before"] i { border: 1.5px dashed #e5e8eb; }
+.week [data-state="before"] span { color: var(--faint); }
