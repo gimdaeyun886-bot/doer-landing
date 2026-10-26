@@ -191,7 +191,7 @@ if (!TAIL) check("로그인하면 오늘 화면(빈 상태)이 보임", /아직 
 console.log("\n[1] 대화 → 확인 → 날짜별 계획");
 const first = TAIL ? { ready: false, lockAsked: false } : await talk("11월 15일에 정보처리기사 실기 시험이 있어", {
   name: "1",
-  answers: ["그때그때 달라요", `평일은 밤 9시 넘어서 1시간, 주말은 오전에 2시간 할 수 있어요. ${OFF_DAY}은 야근이라 못 해요.`, "필기는 붙었고 실기는 기출 1회독 했어요. SQL이 약해요.", "자료 사진은 없어요."],
+  answers: ["그때그때 달라요", `평일은 밤 9시 넘어서 1시간, 주말은 오전에 2시간 할 수 있어요. ${OFF_DAY}은 야근이라 못 해요.`, "필기는 붙었고 실기는 기출 1회독 했어요. SQL이 약해요." ],
 });
 if (!TAIL) check("코치가 대화로 목표를 알아듣고 확인 단계까지 감", first.ready);
 if (!TAIL) check("첫 대화에서 잠글 앱을 물음", first.lockAsked);
@@ -200,10 +200,14 @@ let goalUrl = null;
 if (first.ready) {
   goalUrl = await confirmAndCreate("1");
   const cells = await page.locator('.cal-cell i[data-kind="tasks"]').count();
-  check("달력에 날짜별 할 일이 채워짐", cells > 5, `이번 달 ${cells}일`);
+  check("달력에 오늘이 든 주부터 날짜별 할 일이 채워짐", cells > 5 && (await page.locator(".cal-cell[data-today]").count()) === 1, `보이는 다섯 주에 ${cells}일`);
+  check("달력이 계획 전의 빈 주로 채워지지 않음", (await page.locator(".cal-cell:disabled").count()) < 14, `비활성 칸 ${await page.locator(".cal-cell:disabled").count()}개`);
   check("목표 화면에 근거 한 줄 요약과 근거 화면으로 가는 줄이 보임", (await page.locator(".why-summary").count()) === 1 && (await page.locator(`a.row[href$="/why"]`).count()) === 1);
-  await page.locator(".cal-nav button").last().click();
-  await page.waitForTimeout(700);
+  // 목표일이 다섯 주 밖이면 다음 주들로 넘겨 본다.
+  if (!(await page.locator(".cal-cell[data-deadline]").count()) && (await page.locator(".cal-nav button").last().isEnabled())) {
+    await page.locator(".cal-nav button").last().click();
+    await page.waitForTimeout(700);
+  }
   check("목표일이 달력에 표시됨", (await page.locator(".cal-cell[data-deadline]").count()) === 1);
   await page.goto(goalUrl + "/why");
   await shot("1-why", true);

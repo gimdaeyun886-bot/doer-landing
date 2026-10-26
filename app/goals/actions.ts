@@ -379,7 +379,12 @@ export async function requestAdjustment(reason: string): Promise<AdjustState> {
   // 코치가 돌려준 안에서 실제 오늘 할 일을 가리키는 것만 남긴다.
   const known = new Set(input.flatMap((item) => item.today.map((task) => `${item.goal.id}:${task.id}`)));
   const real = (entry: { goal_id: string; task_id: string }) => known.has(`${entry.goal_id}:${entry.task_id}`);
-  const options = result.options.map((option) => ({ ...option, moves: option.moves.filter(real), drops: option.drops.filter(real) })).filter((option) => option.moves.length || option.drops.length);
+  const cleaned = result.options.map((option) => ({ ...option, moves: option.moves.filter(real), drops: option.drops.filter(real) })).filter((option) => option.moves.length || option.drops.length);
+  // 오늘 할 일을 모두 비우는 안은 그날 잠금을 푸는 것과 같다. 지시문만 믿지 않고 여기서 막는다.
+  // 남은 과제가 둘 이상이면 그런 안은 하나까지만, 오늘 무언가 남는 안들 뒤에 둔다.
+  // 남은 과제가 하나뿐이면 어떤 조정이든 오늘을 비우게 되므로, 대가를 보여 주는 조건으로 그대로 둔다.
+  const empties = (option: AdjustOption) => option.moves.length + option.drops.length >= known.size;
+  const options = known.size > 1 ? [...cleaned.filter((option) => !empties(option)), ...cleaned.filter(empties).slice(0, 1)] : cleaned;
   return options.length ? { reply: result.reply, options } : { message: "코치가 쓸 만한 조정안을 찾지 못했어요. 사정을 조금 더 자세히 말해 주세요." };
 }
 

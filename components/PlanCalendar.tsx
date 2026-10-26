@@ -5,8 +5,12 @@ import { VERIFY_TYPES, addDays, formatDay, formatMinutes, planEnd, totalMinutes,
 import { Icon } from "./ui";
 
 const HEAD = ["일", "월", "화", "수", "목", "금", "토"];
-const monthOf = (date: string) => date.slice(0, 7);
-const monthLabel = (month: string) => `${Number(month.slice(0, 4))}년 ${Number(month.slice(5))}월`;
+const WEEKS = 5; // 한 번에 보여 주는 주 수
+const sundayOf = (date: string) => addDays(date, -new Date(`${date}T00:00:00Z`).getUTCDay());
+const monthNum = (date: string) => Number(date.slice(5, 7));
+// 보이는 칸의 첫날과 끝날로 머리글을 만든다. 달이 걸치면 "10월 – 11월"처럼 적는다.
+const rangeLabel = (from: string, to: string) =>
+  monthNum(from) === monthNum(to) ? `${Number(from.slice(0, 4))}년 ${monthNum(from)}월` : `${monthNum(from)}월 – ${monthNum(to)}월`;
 
 // 전체 계획을 달력으로 보여 준다. 날짜를 누르면 그날 할 일이 아래에 펼쳐진다.
 // passed: 인증을 통과한 과제 id 목록.
@@ -16,15 +20,19 @@ export function PlanCalendar({ plan, today, deadline, passed }: { plan: Plan; to
   const byDate = useMemo(() => new Map(plan.days.map((day) => [day.date, day.tasks])), [plan]);
   const done = useMemo(() => new Set(passed), [passed]);
   const initial = today >= start && today <= end ? today : start;
-  const [month, setMonth] = useState(monthOf(initial));
+  const [anchor, setAnchor] = useState(sundayOf(initial));
   const [selected, setSelected] = useState(initial);
 
-  // 그 달의 칸: 1일의 요일만큼 비우고 날짜를 채운다.
-  const first = `${month}-01`;
-  const offset = new Date(`${first}T00:00:00Z`).getUTCDay();
-  const length = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5)), 0)).getUTCDate();
-  const cells = Array.from({ length: offset + length }, (_, index) => (index < offset ? null : addDays(first, index - offset)));
-  const shift = (step: number) => monthOf(addDays(step > 0 ? `${month}-28` : first, step > 0 ? 4 : -1));
+  // 달 단위가 아니라 오늘이 든 주부터 다섯 주를 보여 준다. 계획 전의 빈 날로 화면을 채우지 않기 위해서다.
+  const firstWeek = sundayOf(start);
+  const lastWeek = sundayOf(end);
+  const cells = Array.from({ length: WEEKS * 7 }, (_, index) => addDays(anchor, index)).filter((date) => sundayOf(date) <= lastWeek);
+  const offset = 0;
+  const shift = (step: number) => {
+    const next = addDays(anchor, step * WEEKS * 7);
+    return next < firstWeek ? firstWeek : next > lastWeek ? lastWeek : next;
+  };
+  const label = rangeLabel(cells[0], cells[cells.length - 1]);
 
   const tasks = byDate.get(selected);
   const week = plan.weeks.find((item) => selected >= item.start && selected <= item.end);
@@ -32,16 +40,16 @@ export function PlanCalendar({ plan, today, deadline, passed }: { plan: Plan; to
   return (
     <div className="cal">
       <div className="cal-nav">
-        <button type="button" className="icon-btn" onClick={() => setMonth(shift(-1))} disabled={month <= monthOf(start)} aria-label="이전 달">
+        <button type="button" className="icon-btn" onClick={() => setAnchor(shift(-1))} disabled={anchor <= firstWeek} aria-label="이전 주들">
           <Icon name="chevL" size={18} weight={2} />
         </button>
-        <b aria-live="polite">{monthLabel(month)}</b>
-        <button type="button" className="icon-btn" onClick={() => setMonth(shift(1))} disabled={month >= monthOf(end)} aria-label="다음 달">
+        <b aria-live="polite">{label}</b>
+        <button type="button" className="icon-btn" onClick={() => setAnchor(shift(1))} disabled={addDays(anchor, WEEKS * 7) > lastWeek} aria-label="다음 주들">
           <Icon name="chevR" size={18} weight={2} />
         </button>
       </div>
 
-      <div className="cal-grid" role="grid" aria-label={`${monthLabel(month)} 계획`}>
+      <div className="cal-grid" role="grid" aria-label={`${label} 계획`}>
         {HEAD.map((day) => (
           <span key={day} className="cal-head" role="columnheader">
             {day}
@@ -49,7 +57,6 @@ export function PlanCalendar({ plan, today, deadline, passed }: { plan: Plan; to
         ))}
         {/* 달이 바뀔 때마다 칸이 차례로 다시 나타나게 한다. */}
         {cells.map((date, index) => {
-          if (!date) return <span key={`${month}-blank-${index}`} />;
           const inPlan = date >= start && date <= end;
           const dayTasks = byDate.get(date);
           const count = dayTasks?.length ?? 0;
@@ -69,7 +76,8 @@ export function PlanCalendar({ plan, today, deadline, passed }: { plan: Plan; to
               data-past={date < today || undefined}
               onClick={() => setSelected(date)}
             >
-              <span>{Number(date.slice(8))}</span>
+              {/* 달이 바뀌는 첫날에는 몇 월인지 함께 적는다. */}
+              <span>{date.endsWith("-01") ? `${monthNum(date)}/1` : Number(date.slice(8))}</span>
               {inPlan && (
                 <i data-kind={allDone ? "done" : count ? "tasks" : dayTasks ? "rest" : "later"}>
                   {allDone ? <Icon name="check" size={11} weight={3} /> : Array.from({ length: Math.min(count, 3) }, (_, dot) => <em key={dot} />)}
