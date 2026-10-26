@@ -92,7 +92,6 @@ export function PlanCalendar({ plan, today, deadline, passed }: { plan: Plan; to
         <header>
           <h3>
             {formatDay(selected)}
-            {selected === today && <em>오늘</em>}
             {selected === deadline && <em data-kind="deadline">목표일</em>}
           </h3>
           {week && (
@@ -111,8 +110,8 @@ export function PlanCalendar({ plan, today, deadline, passed }: { plan: Plan; to
                   <li key={task.id} data-done={passed || undefined}>
                     <details>
                       <summary>
-                        <span className="check" aria-hidden="true">
-                          {passed && <Icon name="check" size={15} weight={3} />}
+                        <span className="row-icon" data-done={passed || undefined} aria-hidden="true">
+                          <Icon name={passed ? "check" : type.icon} size={17} weight={passed ? 2.6 : 1.9} />
                         </span>
                         <span className="today-text">
                           <b>{task.title}</b>
@@ -132,9 +131,9 @@ export function PlanCalendar({ plan, today, deadline, passed }: { plan: Plan; to
                 );
               })}
             </ol>
-            <p className="cal-sum">
+            {tasks.length > 1 && <p className="cal-sum">
               {tasks.length}가지 · 약 {formatMinutes(totalMinutes(tasks))}
-            </p>
+            </p>}
           </>
         ) : tasks ? (
           <p className="cal-empty">쉬는 날이에요.</p>

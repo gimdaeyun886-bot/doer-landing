@@ -10,7 +10,7 @@ import { ADJUST_SAY_KEY } from "./AdjustChat";
 import { isIOS } from "@/lib/native";
 import { ConfirmForm } from "./ConfirmForm";
 import { LockPicker } from "./LockPicker";
-import { Art, Button, CoachMark, Icon, NavButton, Symbol } from "./ui";
+import { Button, CoachMark, Icon, NavButton, Symbol } from "./ui";
 
 const EMPTY: Slots = { title: null, kind: null, deadline: null, schedule: null, daily_minutes: null, note: null, facts: [], material_summary: null, lock_targets: null };
 const EXAMPLES = ["11월 15일 정보처리기사 실기, 평일 밤 1시간", "주 3회 아침 30분 달리기를 습관으로", "미뤄 둔 포트폴리오, 이번 달 안에"];
@@ -211,7 +211,7 @@ export function CoachChat({ today, savedLocks, canAdjust }: { today: string; sav
         {started && <CoachMark />}
         <div>
           <p className="chat-name">코치</p>
-          <p className="chat-sub">{!started ? "목표를 같이 정해요" : ready ? "다 정리했어요" : "대화는 저장돼요"}</p>
+          <p className="chat-sub">{!started ? "" : ready ? "다 정리했어요" : "대화는 저장돼요"}</p>
         </div>
         {started && (
           <button type="button" className="nav-btn chat-reset" onClick={restart} aria-label="대화를 처음부터 다시 하기">
@@ -223,9 +223,7 @@ export function CoachChat({ today, savedLocks, canAdjust }: { today: string; sav
       <div className="chat-body">
         {!started && restored && (
           <div className="hello">
-            <span className="hello-mark" aria-hidden="true">
-              <Art name="coach" size={112} priority />
-            </span>
+            <CoachMark size={64} />
             <h1>{"안녕하세요, 코치예요.\n어떤 걸 해내고 싶어요?"}</h1>
             <p>시험, 운동, 책, 미뤄 둔 작업 무엇이든요.</p>
             {canAdjust && (

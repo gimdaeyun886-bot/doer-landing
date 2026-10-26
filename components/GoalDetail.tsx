@@ -1,7 +1,7 @@
 import { CoachTour, type TourStep } from "@/components/CoachTour";
 import { ClearChat, DeleteGoalButton, ReplanButton } from "@/components/GoalActions";
 import { PlanCalendar } from "@/components/PlanCalendar";
-import { ButtonLink, Icon, NavButton, Notice, Pill, RowLink, Section, kindTone } from "@/components/ui";
+import { ButtonLink, Icon, NavButton, Notice, Pill, RowLink, Section } from "@/components/ui";
 import { formatDate, formatMinutes, goalTag, planEnd, type Goal, type Proof } from "@/lib/goals";
 
 type SimpleAction = (prev: { message?: string }, formData: FormData) => Promise<{ message?: string }>;
@@ -41,7 +41,7 @@ export function GoalDetail({ goal, today, notice, proofs, materialSrc, replan, r
       {notice && NOTICES[notice] && <Notice tone={NOTICES[notice].tone}>{NOTICES[notice].text}</Notice>}
 
       <header className="detail-head">
-        <Pill tone={kindTone(goal.kind)}>{goalTag(goal)}</Pill>
+        <Pill tone="neutral">{goalTag(goal)}</Pill>
         <h1>{goal.title}</h1>
         <p className="meta">
           {until} · {goal.schedule || `하루 ${formatMinutes(goal.daily_minutes)}`}

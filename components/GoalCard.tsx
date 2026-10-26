@@ -13,7 +13,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
           <b>{goal.title}</b>
           <small>{!ready ? "계획을 아직 만들지 못했어요" : today.length ? `오늘 ${today.length}가지 · 약 ${formatMinutes(today.reduce((sum, task) => sum + task.minutes, 0))}` : "오늘은 쉬는 날"}</small>
         </span>
-        <Pill tone={tone}>{goalTag(goal)}</Pill>
+        <Pill tone="neutral">{goalTag(goal)}</Pill>
         <Icon name="chevR" size={16} />
       </Link>
     </li>

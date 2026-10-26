@@ -1,4 +1,4 @@
-import { Art, Section } from "@/components/ui";
+import { Section } from "@/components/ui";
 import { formatDay, weekdayOf } from "@/lib/goals";
 import type { DayRecord, DayState } from "@/lib/streak";
 
@@ -77,7 +77,6 @@ export function RecordsView({ week, streak, proofs }: { week: DayRecord[]; strea
                 </div>
               </dl>
             </Section>
-      <Art name="stack" size={150} className="records-art" />
     </>
   );
 }

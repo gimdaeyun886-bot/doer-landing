@@ -3,7 +3,7 @@ import { TaskVerify } from "@/components/TaskVerify";
 import { StallNudge } from "@/components/StallNudge";
 import { Celebrate, StreakBadge } from "@/components/Celebrate";
 import { LockSync, StartButton, VerifyNext } from "@/components/TodayActions";
-import { Art, ButtonLink, EmptyState, Icon, TabBar } from "@/components/ui";
+import { ButtonLink, EmptyState, Icon, TabBar } from "@/components/ui";
 import {
   formatMinutes,
   formatToday,
@@ -87,9 +87,8 @@ export function TodayView({
       <header className="headline">
         <div className="headline-row">
           <p className="date">{formatToday()}</p>
-          {goals.length > 0 && (
-            <StreakBadge streak={streak} doneToday={allDone} />
-          )}
+          {/* 연속 기록은 이틀째부터. 첫날의 "오늘이 첫날"은 알려 주는 것이 없다. */}
+          {goals.length > 0 && streak >= 2 && <StreakBadge streak={streak} doneToday={allDone} />}
         </div>
         <h1>{allDone ? "오늘 몫을 다 했어요" : "오늘 할 일"}</h1>
       </header>
@@ -97,6 +96,7 @@ export function TodayView({
       {goals.length === 0 ? (
         <EmptyState
           title="아직 계획이 없어요"
+          art="goals"
           action={
             <ButtonLink href="/goals/new">코치에게 목표 말하기</ButtonLink>
           }
@@ -106,6 +106,7 @@ export function TodayView({
       ) : tasks.length === 0 ? (
         <EmptyState
           title="오늘은 쉬는 날이에요"
+          art="stone"
           action={
             <ButtonLink href="/goals" variant="soft">
               전체 계획 보기
@@ -116,47 +117,19 @@ export function TodayView({
         </EmptyState>
       ) : (
         <>
-          {/* 오늘의 주인공 하나: 남은 수와 잠금 상태. 오른쪽 자물쇠 오브제가 상태를 함께 보여 준다. */}
-          <section
-            className="hero"
-            data-tone={allDone ? "done" : locked ? "lock" : "idle"}
-          >
-            <div className="hero-text">
-              <p className="hero-label">
-                {allDone ? "오늘 몫 끝" : locked ? "잠금 중" : "시작 전"}
-              </p>
-              <p className="hero-num">
-                <b>{allDone ? tasks.length : left}</b>
-                <span>{allDone ? "가지 모두 인증" : "가지 남음"}</span>
-              </p>
-              <p
-                className="status"
-                data-tone={allDone ? "done" : locked ? "lock" : "idle"}
-                role="status"
-              >
-                <Icon
-                  name={allDone ? "check" : "lock"}
-                  size={15}
-                  weight={2.2}
-                />
-                {allDone
-                  ? lockTargets.length
-                    ? "잠금이 풀렸어요"
-                    : "모두 인증했어요"
-                  : locked
-                    ? `${shortLocks(lockTargets) || "고른 앱"} 잠김`
-                    : lockTargets.length
-                      ? `시작하면 잠겨요 · ${shortLocks(lockTargets)}`
-                      : "잠글 앱을 아직 고르지 않았어요"}
-              </p>
-            </div>
-            <Art
-              name={allDone ? "lock-open" : locked ? "lock" : "stone"}
-              size={108}
-              className="hero-art"
-              priority
-            />
-          </section>
+          {/* 잠금 상태는 한 줄로만 말한다. 남은 수는 아래 목록이 보여 준다. */}
+          <p className="status" data-tone={allDone ? "done" : locked ? "lock" : "idle"} role="status">
+            <Icon name={allDone ? "check" : "lock"} size={15} weight={2.2} />
+            {allDone
+              ? lockTargets.length
+                ? "잠금이 풀렸어요"
+                : "오늘 할 일을 모두 인증했어요"
+              : locked
+                ? `잠겨 있어요 · ${shortLocks(lockTargets) || "고른 앱"} · 모두 인증하면 열려요`
+                : lockTargets.length
+                  ? `시작하면 잠겨요 · ${shortLocks(lockTargets)}`
+                  : "잠글 앱을 아직 고르지 않았어요"}
+          </p>
 
           <section aria-label="오늘 할 일 목록">
             <ol className="today-list">

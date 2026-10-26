@@ -65,8 +65,8 @@ export function TaskVerify({ goalId, goalTitle, task, proof }: Props) {
   return (
     <li>
       <button type="button" className="today-row" onClick={() => dialog.current?.showModal()} data-state={passed ? "passed" : judged ? "retry" : "todo"}>
-        <span className="check" aria-hidden="true">
-          {passed && <Icon name="check" size={15} weight={3} />}
+        <span className="row-icon" data-kind={kind} aria-hidden="true">
+          <Icon name={passed ? "check" : type.icon} size={17} weight={passed ? 2.6 : 1.9} />
         </span>
         <span className="today-text">
           <b>{task.title}</b>

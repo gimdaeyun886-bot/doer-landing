@@ -1393,3 +1393,124 @@ p, h1, h2, h3, li, dd { text-wrap: pretty; }
 .hero .status[data-tone="lock"] { background: #f1e7da; color: var(--ink); }
 .hero .status[data-tone="lock"] .icon { color: var(--coral-text); }
 .week [data-state="pending"] i { border: 0; box-shadow: inset 0 0 0 1.5px var(--ink); }
+
+/* ════════════════════════════════════════════════════════════════════
+   아이폰식 묶음 목록 (2026-10-27). 카드와 그림자 대신 바탕과 칸의 명도 차이로 나눈다.
+   그림은 순간(가입·빈 화면·축하)에만. 한 사실은 한 번만. 코랄은 누를 것과 잠금에만.
+   ════════════════════════════════════════════════════════════════════ */
+:root {
+  --bg: #f4eee6;
+  --cell: #fffdfa;
+  --cell-pressed: #ece5db;
+  --sep: rgba(60, 40, 20, 0.14);
+  --label3: #756a61;
+}
+html, body, .app, .screen { background: var(--bg) !important; }
+.screen { gap: 0; padding-inline: 16px; }
+.screen > * + * { margin-top: 24px; }
+.screen > .tabbar, .screen > .nudge { margin-top: auto; }
+
+/* 큰 제목 */
+.headline { padding: 6px 4px 0; }
+.headline h1 { font-size: 32px; line-height: 40px; font-weight: 700; letter-spacing: -0.6px; }
+.headline .date { font-size: 13px; font-weight: 600; color: var(--label3); }
+
+/* 묶음: 제목은 밖에, 칸은 안에. 그림자 없음 */
+.group { display: grid; gap: 7px; }
+.group > .section-head { padding: 0 4px; }
+.group > .section-head h2 { font-size: 13px; line-height: 18px; font-weight: 600; color: var(--label3); letter-spacing: 0; }
+.group > .section-head span { font-size: 13px; color: var(--label3); }
+.section, .today section[aria-label="오늘 할 일 목록"], .tiles div, .sheet-list, .agree, .lock-card, .cal-day, .facts, .notice-info { box-shadow: none !important; }
+.section { padding: 4px 16px; border-radius: 12px; background: var(--cell); }
+.section:has(> .why-summary), .section:has(> .plain) { padding-block: 14px; }
+.rows .row + .row, .today-list li + li .today-row, .day-tasks li + li { border-top: 0.5px solid var(--sep); }
+.row:active, .today-row:active { background: var(--cell-pressed); transition: none; }
+.row, .today-row { transition: background-color 0.25s; }
+
+/* 오늘: 상태 한 줄, 할 일 묶음, 버튼 */
+.status { padding: 0 4px; background: none !important; font-size: 15px; font-weight: 500; color: var(--sub); box-shadow: none; }
+.status[data-tone="lock"] { color: var(--ink); }
+.status[data-tone="lock"] .icon { color: var(--coral); }
+.status[data-tone="done"] { color: var(--green-text); }
+.today section[aria-label="오늘 할 일 목록"] { padding: 0 16px; border-radius: 12px; background: var(--cell); }
+.today .status + section { margin-top: 10px; }
+.today-row, .today-list li:first-child .today-row { min-height: 64px; gap: 12px; margin-inline: -16px; padding: 10px 16px; }
+.today-list li + li .today-row { border-top: 0; box-shadow: inset 0 0.5px 0 var(--sep); }
+.row-icon { display: grid; place-items: center; flex: none; width: 30px; height: 30px; border-radius: 8px; background: var(--tint); color: var(--sub); }
+.today-row[data-state="passed"] .row-icon { background: var(--green); color: #fff; }
+.today-row[data-state="retry"] .row-icon { background: var(--red-soft); color: var(--red); }
+.today-text b { font-size: 16px; font-weight: 600; }
+.today-row[data-state="passed"] .today-text b { color: var(--mut); }
+.today-sum { margin-top: 10px; }
+.today .dock, .detail .dock { margin-top: 16px; }
+
+/* 버튼: 아이폰 크기 */
+.btn { min-height: 50px; border-radius: 12px; }
+.btn-soft, .btn-coach, .btn-quiet { background: var(--cell); box-shadow: none; }
+.btn-ghost { color: var(--coral-text); }
+
+/* 탭 바 */
+.tabbar a, .tabbar a[aria-current] { height: 49px; font-size: 10px; font-weight: 500; letter-spacing: 0.1px; color: var(--label3); }
+.tabbar a[aria-current], .tabbar a[aria-current] .icon { color: var(--coral-text); }
+.tabbar { background: rgba(244, 238, 230, 0.86); }
+
+/* 시트 */
+.sheet { border-radius: 16px 16px 0 0; box-shadow: none; }
+.sheet::backdrop { background: rgba(0, 0, 0, 0.3); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.sheet-grip { width: 36px; height: 5px; border-radius: 2.5px; background: rgba(60, 40, 20, 0.22); }
+
+/* 코치의 한마디: 떠 있는 카드가 아니라 탭 바 위의 조용한 줄 */
+.nudge { padding: 12px 14px; border-radius: 12px; background: var(--cell); box-shadow: 0 0 0 0.5px var(--sep); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.nudge p { font-size: 14px; }
+
+/* 계획 */
+.detail .pill-neutral { background: none; padding: 0; color: var(--sub); font-size: 13px; }
+.detail > .notice-success { animation: toast-out 3.6s ease forwards; }
+@keyframes toast-out { 0%, 80% { opacity: 1; } 100% { opacity: 0; height: 0; padding: 0; margin: 0; overflow: hidden; } }
+.cal-day { background: none; padding: 14px 0 4px; border-top: 0.5px solid var(--sep); border-radius: 0; margin-top: 8px; }
+
+/* 기록: 숫자는 칸 목록으로(값은 오른쪽) */
+.tiles { grid-template-columns: 1fr; gap: 0; padding: 0 16px; border-radius: 12px; background: var(--cell); }
+.tiles div { display: flex; align-items: baseline; justify-content: space-between; min-height: 44px; padding: 11px 0; border-radius: 0; background: none; }
+.tiles div + div { box-shadow: inset 0 0.5px 0 var(--sep); }
+.tiles dt { font-size: 16px; font-weight: 400; color: var(--ink); }
+.tiles dd { font-size: 17px; line-height: 22px; font-weight: 600; }
+.tiles small { font-size: 14px; }
+.records .group:has(.tiles) .section { padding: 0; background: none; }
+
+/* 가입: 아이콘은 모두 같은 회색, 이메일 창의 '필수'도 회색 */
+.promises .icon { color: var(--label3) !important; }
+.agree-row em { color: var(--label3); }
+
+/* 대화 첫 화면: 코치 얼굴만 */
+.hello .coach-mark { margin-bottom: 14px; }
+.msg-coach .bubble { background: #efe8de; box-shadow: none; }
+
+/* 기다림 화면과 빈 상태 */
+.planning { background: var(--bg); }
+.planning .ring span { background: none; box-shadow: none; }
+.empty .art { width: 132px; filter: drop-shadow(0 8px 12px rgba(60, 40, 20, 0.15)); }
+.hello-mark { display: none; }
+
+/* 다 해낸 순간: 내일은 상자 없이 */
+.plain-next { padding: 4px 0 0; background: none !important; text-align: center; justify-items: center; }
+.plain-next .bullets li { padding-left: 0; }
+.plain-next .bullets li::before { display: none; }
+.celebrate .burst-mark .art { width: 120px !important; height: auto; filter: drop-shadow(0 8px 12px rgba(60, 40, 20, 0.15)); }
+/* 계획: 날짜 상세의 줄도 인증 방식 아이콘, 칸 안의 상자는 없앤다, 관리의 버튼은 한 줄로 */
+.row-icon[data-done] { background: var(--green); color: #fff; }
+.day-tasks summary { gap: 12px; }
+.material-empty { background: none !important; padding: 12px 0 !important; color: var(--sub); }
+.section .replan .btn { min-height: 44px; justify-content: flex-start; padding: 0; background: none; color: var(--coral-text); font-size: 16px; font-weight: 500; box-shadow: none; }
+.section .replan { border-top: 0.5px solid var(--sep); }
+/* 창(시트)은 화면 간격 규칙에서 빼서 바닥에 붙인다 */
+.screen > dialog, dialog.sheet { margin: auto auto 0 !important; }
+.celebrate { background: var(--cell) !important; }
+.celebrate-count b { font-size: 56px; line-height: 60px; }
+/* 잠글 앱 고르기: 카드 안의 카드를 없앤다 */
+.lock-card { background: none !important; padding: 0 !important; }
+.lock-chosen li { background: var(--cell) !important; border-radius: 12px; }
+/* 대화 첫 화면의 코치는 원판 없이 */
+.hello .coach-mark { background: none; box-shadow: none; }
+/* 계획 완료 안내가 사라진 뒤 남는 선 없애기 */
+.detail > .notice-success { border: 0; }

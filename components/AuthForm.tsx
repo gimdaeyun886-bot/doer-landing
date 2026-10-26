@@ -130,7 +130,7 @@ export function AuthForm({ bye, providers = [], failed }: { bye?: boolean; provi
             로그인
           </button>
         </div>
-        <h2 id="email-title">{signup ? "이메일로 가입해요" : "다시 왔네요"}</h2>
+        <h2 id="email-title" className="sr-only">{signup ? "이메일로 가입해요" : "다시 왔네요"}</h2>
 
         {state.notice && <Notice tone="success">{state.notice}</Notice>}
         {state.message && <Notice tone="error">{state.message}</Notice>}
@@ -180,9 +180,6 @@ export function AuthForm({ bye, providers = [], failed }: { bye?: boolean; provi
 
           <Button type="submit" disabled={pending || (signup && !all)} aria-busy={pending}>
             {pending ? "잠시만요…" : signup ? "가입하고 시작하기" : "로그인"}
-          </Button>
-          <Button type="button" variant="quiet" onClick={() => dialog.current?.close()}>
-            닫기
           </Button>
         </form>
       </dialog>

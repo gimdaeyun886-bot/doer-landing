@@ -157,14 +157,14 @@ export function TabBar({ active }: { active: "today" | "goals" | "records" | "me
 // 화면을 나누는 한 구획. 제목과 오른쪽의 짧은 덧말을 둘 수 있다.
 export function Section({ title, aside, children, className = "" }: { title?: string; aside?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={`section ${className}`.trim()}>
+    <section className="group">
       {title && (
         <div className="section-head">
           <h2>{title}</h2>
           {aside && <span>{aside}</span>}
         </div>
       )}
-      {children}
+      <div className={`section ${className}`.trim()}>{children}</div>
     </section>
   );
 }

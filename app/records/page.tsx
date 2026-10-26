@@ -31,7 +31,7 @@ export default async function RecordsPage() {
       </header>
 
       {goals.length === 0 ? (
-        <EmptyState title="아직 기록이 없어요" action={<ButtonLink href="/goals/new">코치에게 목표 말하기</ButtonLink>}>
+        <EmptyState title="아직 기록이 없어요" art="stack" action={<ButtonLink href="/goals/new">코치에게 목표 말하기</ButtonLink>}>
           계획을 받고 하루를 인증하면 여기에 쌓여요.
         </EmptyState>
       ) : (

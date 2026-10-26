@@ -65,7 +65,7 @@ export function Celebrate({ today, streak, count, tomorrow }: { today: string; s
       </p>
       <h2 id="celebrate-title" tabIndex={-1}>{milestone ? milestoneTitle(streak) : "오늘 몫을 다 해냈어요"}</h2>
       <p>{milestone ? milestoneLine(streak) : `오늘 할 일 ${count}가지를 모두 인증했어요. 잠금도 풀렸어요.`}</p>
-      <div className="celebrate-next">
+      <div className="celebrate-next plain-next">
         <h3>내일</h3>
         {tomorrow.length ? (
           <ul className="bullets">

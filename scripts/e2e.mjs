@@ -400,7 +400,7 @@ await shot("5-records", true);
 check("기록 화면에 최근 일주일 칸 7개와 숫자 타일이 보임", (await page.locator(".week li").count()) === 7 && (await page.locator(".tiles div").count()) === 4);
 await page.goto(BASE + "/today");
 await settle();
-check("오늘 화면에 연속 기록이 보임", (await page.locator(".streak-badge").count()) === 1, await page.locator(".streak-badge").innerText().catch(() => ""));
+check("연속 기록은 이틀째부터 오늘 화면에 보임", (await page.locator(".streak-badge").count()) === 0 || /\d+일째/.test(await page.locator(".streak-badge").innerText()));
 
 // 5. 내 정보: 잠글 앱 바꾸기, 약관
 console.log("\n[5] 내 정보");
