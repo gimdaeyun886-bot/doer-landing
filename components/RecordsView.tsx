@@ -27,56 +27,56 @@ export function RecordsView({ week, streak, proofs }: { week: DayRecord[]; strea
   const adjusted = week.filter((day) => day.state === "adjusted").length;
   return (
     <>
-            <Section>
-              <ol className="week" aria-label="최근 일주일">
-                {week.map((day) => (
-                  <li key={day.date} data-state={day.state} aria-label={`${formatDay(day.date)}, ${STATE_LABEL[day.state]}`}>
-                    <span>{weekdayOf(day.date)}</span>
-                    <i />
-                  </li>
-                ))}
-              </ol>
-              <ul className="week-legend" aria-hidden="true">
-                <li data-state="done">끝냄</li>
-                <li data-state="adjusted">조정</li>
-                <li data-state="missed">못 함</li>
-                <li data-state="rest">쉼</li>
-              </ul>
-              <p className="plain">{coachLine(week)}</p>
-            </Section>
-  
-            <Section title="숫자로 보면">
-              <dl className="tiles">
-                <div>
-                  <dt>연속 기록</dt>
-                  <dd>
-                    {streak}
-                    <small>일</small>
-                  </dd>
-                </div>
-                <div>
-                  <dt>지킨 날</dt>
-                  <dd>
-                    {kept}
-                    <small>/ 7일</small>
-                  </dd>
-                </div>
-                <div>
-                  <dt>인증한 할 일</dt>
-                  <dd>
-                    {proofs}
-                    <small>가지</small>
-                  </dd>
-                </div>
-                <div>
-                  <dt>조정한 날</dt>
-                  <dd>
-                    {adjusted}
-                    <small>일</small>
-                  </dd>
-                </div>
-              </dl>
-            </Section>
+      <Section>
+        <ol className="week" aria-label="최근 일주일">
+          {week.map((day) => (
+            <li key={day.date} data-state={day.state} aria-label={`${formatDay(day.date)}, ${STATE_LABEL[day.state]}`}>
+              <span>{weekdayOf(day.date)}</span>
+              <i />
+            </li>
+          ))}
+        </ol>
+        <ul className="week-legend" aria-hidden="true">
+          <li data-state="done">끝냄</li>
+          <li data-state="adjusted">조정</li>
+          <li data-state="missed">못 함</li>
+          <li data-state="rest">쉼</li>
+        </ul>
+        <p className="plain">{coachLine(week)}</p>
+      </Section>
+
+      <Section title="숫자로 보면">
+        <dl className="tiles">
+          <div>
+            <dt>연속 기록</dt>
+            <dd>
+              {streak}
+              <small>일</small>
+            </dd>
+          </div>
+          <div>
+            <dt>지킨 날</dt>
+            <dd>
+              {kept}
+              <small>/ 7일</small>
+            </dd>
+          </div>
+          <div>
+            <dt>인증한 할 일</dt>
+            <dd>
+              {proofs}
+              <small>가지</small>
+            </dd>
+          </div>
+          <div>
+            <dt>조정한 날</dt>
+            <dd>
+              {adjusted}
+              <small>일</small>
+            </dd>
+          </div>
+        </dl>
+      </Section>
     </>
   );
 }

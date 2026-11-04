@@ -120,6 +120,9 @@ export const LOCK_APPS: { name: string; pkg: string; parts?: string[] }[] = [
 // 잠글 대상 한 줄의 모양: "앱 이름", "앱 이름 화면", 또는 설치된 앱에서 고른 "앱 이름|패키지".
 export const lockLabel = (target: string) => target.split("|")[0];
 export const lockLabels = (targets: string[]) => targets.map(lockLabel);
+// 잠글 대상을 앱 단위로 센다. "인스타그램 릴스"와 "인스타그램 스토리"는 한 앱이다.
+export const lockAppCount = (targets: string[]) =>
+  new Set(targets.map((target) => (target.includes("|") ? target : (LOCK_APPS.find((app) => target === app.name || target.startsWith(`${app.name} `))?.name ?? target)))).size;
 
 export const KIND_FILTERS = [{ value: "all", label: "전체" }, ...KINDS.map((kind) => ({ value: kind.value, label: kind.short }))] as const;
 export type KindFilter = "all" | GoalKind;

@@ -2,6 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
+import { NavTitle } from "./NavTitle";
 
 type Variant = "primary" | "soft" | "coach" | "danger" | "quiet" | "ghost" | "cream";
 const buttonClass = (variant: Variant = "primary", className = "") => `btn btn-${variant} ${className}`.trim();
@@ -141,16 +142,19 @@ export function TabBar({ active }: { active: "today" | "goals" | "records" | "me
     { key: "me", href: "/settings", icon: "user", label: "내 정보" },
   ] as const;
   return (
-    <nav className="tabbar" aria-label="주 메뉴">
-      <div className="tabbar-inner">
-        {tabs.map((tab) => (
-          <Link key={tab.key} href={tab.href} aria-current={tab.key === active ? "page" : undefined}>
-            <Icon name={tab.icon} size={22} weight={1.9} />
-            <span>{tab.label}</span>
-          </Link>
-        ))}
-      </div>
-    </nav>
+    <>
+      <NavTitle />
+      <nav className="tabbar" aria-label="주 메뉴">
+        <div className="tabbar-inner">
+          {tabs.map((tab) => (
+            <Link key={tab.key} href={tab.href} aria-current={tab.key === active ? "page" : undefined}>
+              <Icon name={tab.icon} size={22} weight={1.9} />
+              <span>{tab.label}</span>
+            </Link>
+          ))}
+        </div>
+      </nav>
+    </>
   );
 }
 

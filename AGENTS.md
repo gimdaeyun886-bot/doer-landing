@@ -20,7 +20,7 @@ AI 코딩 도구와 사람이 함께 보는 작업 규칙입니다. 기능 명�
 - `app/today/` — 오늘 할 일, 연속 기록, 시작 전 확인, 인증, 다 해낸 순간의 축하(`components/Celebrate.tsx`).
 - `app/records/` — 최근 일주일 기록(`components/RecordsView.tsx`). 하루 상태와 연속 기록 계산은 `lib/streak.ts`.
 - `app/design/` — 개발할 때만 열리는 새 부품 미리보기. 배포에서는 404.
-- `app/settings/`, `app/privacy/`, `app/terms/` — 잠글 앱, 처리방침, 약관.
+- `app/settings/` — 내 정보 목록과 잠글 앱 고르기(`locks/`, 고친 것이 있을 때만 위쪽 저장). `app/privacy/`, `app/terms/` — 처리방침, 약관.
 - `app/goals/actions.ts` — 데이터 변경과 AI 호출은 여기(Server Actions)서만 한다.
 - `lib/goals.ts` — 타입, 입력 규칙, 날짜 표시. 서버와 브라우저가 함께 쓴다.
 - `lib/plan.ts` — AI 호출(대화, 사진 읽기, 계획, 인증 판정, 조정안). 서버 전용.

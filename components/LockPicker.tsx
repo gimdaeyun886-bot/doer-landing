@@ -64,64 +64,74 @@ export function LockPicker({ value, onChange, name }: { value: string[]; onChang
     onChange([...rest, ...next]);
   }
 
+  // 화면이 나뉜 앱은 앱마다 한 묶음, 나머지는 '앱 전체' 한 묶음에 모은다.
+  const split = chosenKnown.filter((app) => app.parts);
+  const wholeApps = [
+    ...chosenKnown.filter((app) => !app.parts).map((app) => ({ label: app.name, remove: () => onChange(without(app)) })),
+    ...chosenOther.map((item) => ({ label: lockLabel(item), remove: () => onChange(value.filter((other) => other !== item)) })),
+  ];
+
   return (
     <div className="lock-picker">
-      {chosenKnown.length + chosenOther.length > 0 && (
+      {split.length + wholeApps.length > 0 && (
         <ul className="lock-chosen">
-          {chosenKnown.map((app) => {
+          {split.map((app) => {
             const whole = value.includes(app.name);
             return (
-              <li key={app.name}>
-                <div className="lock-chosen-top">
-                  <b>{app.name}</b>
-                  <button type="button" className="icon-btn" onClick={() => onChange(without(app))} aria-label={`${app.name} 빼기`}>
-                    <Icon name="x" size={16} weight={2} />
+              <li key={app.name} className="group">
+                <div className="section-head">
+                  <h3>{app.name}</h3>
+                  <button type="button" className="text-btn" onClick={() => onChange(without(app))} aria-label={`${app.name} 빼기`}>
+                    빼기
                   </button>
                 </div>
-                {app.parts ? (
-                  <div className="chips" role="group" aria-label={`${app.name}에서 잠글 화면`}>
-                    {app.parts.map((part) => (
-                      <button key={part} type="button" className="chip-btn chip-sm" aria-pressed={whole || value.includes(partOf(app, part))} disabled={whole} title={whole ? "앱 전체에 들어 있어요" : undefined} onClick={() => togglePart(app, part)}>
-                        {part}
-                      </button>
-                    ))}
-                    <button type="button" className="chip-btn chip-sm" aria-pressed={whole} onClick={() => togglePart(app, null)}>
-                      앱 전체
-                    </button>
-                  </div>
-                ) : (
-                  <p>앱 전체를 잠가요</p>
-                )}
+                <div className="section rows" role="group" aria-label={`${app.name}에서 잠글 화면`}>
+                  {app.parts!.map((part) => (
+                    <CheckRow key={part} label={part} on={whole || value.includes(partOf(app, part))} disabled={whole} onClick={() => togglePart(app, part)} />
+                  ))}
+                  <CheckRow label="앱 전체" on={whole} onClick={() => togglePart(app, null)} />
+                </div>
               </li>
             );
           })}
-          {chosenOther.map((item) => (
-            <li key={item}>
-              <div className="lock-chosen-top">
-                <b>{lockLabel(item)}</b>
-                <button type="button" className="icon-btn" onClick={() => onChange(value.filter((other) => other !== item))} aria-label={`${lockLabel(item)} 빼기`}>
-                  <Icon name="x" size={16} weight={2} />
-                </button>
+          {wholeApps.length > 0 && (
+            <li className="group">
+              <div className="section-head">
+                <h3>앱 전체를 잠가요</h3>
               </div>
-              <p>앱 전체를 잠가요</p>
+              <div className="section rows">
+                {wholeApps.map((app) => (
+                  <div key={app.label} className="row">
+                    <span className="row-text">
+                      <b>{app.label}</b>
+                    </span>
+                    <button type="button" className="text-btn" onClick={app.remove} aria-label={`${app.label} 빼기`}>
+                      빼기
+                    </button>
+                  </div>
+                ))}
+              </div>
             </li>
-          ))}
+          )}
         </ul>
       )}
 
-      <Button
-        type="button"
-        variant="ghost"
-        className="btn-sm"
-        disabled={full}
-        onClick={() => {
-          setQuery("");
-          dialog.current?.showModal();
-        }}
-      >
-        <Icon name="plus" size={17} weight={2} />
-        {value.length ? "앱 더 고르기" : "잠글 앱 고르기"}
-      </Button>
+      <div className="section rows">
+        <button
+          type="button"
+          className="row add-row"
+          disabled={full}
+          onClick={() => {
+            setQuery("");
+            dialog.current?.showModal();
+          }}
+        >
+          <Icon name="plus" size={20} weight={2} />
+          <span className="row-text">
+            <b>{value.length ? "앱 더 고르기" : "잠글 앱 고르기"}</b>
+          </span>
+        </button>
+      </div>
 
       <dialog ref={dialog} className="sheet app-sheet" aria-label="잠글 앱 고르기">
         <span className="sheet-grip" aria-hidden="true" />
@@ -158,5 +168,19 @@ export function LockPicker({ value, onChange, name }: { value: string[]; onChang
 
       {name && value.map((item) => <input key={item} type="hidden" name={name} value={item} />)}
     </div>
+  );
+}
+
+// 설정 앱처럼 누르면 오른쪽에 체크가 붙는 한 줄.
+function CheckRow({ label, on, disabled, onClick }: { label: string; on: boolean; disabled?: boolean; onClick: () => void }) {
+  return (
+    <button type="button" className="row check-row" aria-pressed={on} disabled={disabled} title={disabled ? "앱 전체에 들어 있어요" : undefined} onClick={onClick}>
+      <span className="row-text">
+        <b>{label}</b>
+      </span>
+      <span className="check" aria-hidden="true">
+        {on && <Icon name="check" size={18} weight={2.4} />}
+      </span>
+    </button>
   );
 }

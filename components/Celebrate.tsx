@@ -65,18 +65,22 @@ export function Celebrate({ today, streak, count, tomorrow }: { today: string; s
       </p>
       <h2 id="celebrate-title" tabIndex={-1}>{milestone ? milestoneTitle(streak) : "오늘 몫을 다 해냈어요"}</h2>
       <p>{milestone ? milestoneLine(streak) : `오늘 할 일 ${count}가지를 모두 인증했어요. 잠금도 풀렸어요.`}</p>
-      <div className="celebrate-next plain-next">
-        <h3>내일</h3>
-        {tomorrow.length ? (
-          <ul className="bullets">
-            {tomorrow.slice(0, 3).map((title) => (
-              <li key={title}>{title}</li>
-            ))}
-            {tomorrow.length > 3 && <li>그 밖에 {tomorrow.length - 3}가지</li>}
-          </ul>
-        ) : (
-          <p className="plain">쉬는 날이에요. 푹 쉬어요.</p>
-        )}
+      <div className="group next-group">
+        <div className="section-head">
+          <h3>내일</h3>
+          {tomorrow.length > 3 && <span>그 밖에 {tomorrow.length - 3}가지</span>}
+        </div>
+        <ul className="section rows">
+          {tomorrow.length ? (
+            tomorrow.slice(0, 3).map((title) => (
+              <li key={title} className="row">
+                {title}
+              </li>
+            ))
+          ) : (
+            <li className="row">쉬는 날이에요</li>
+          )}
+        </ul>
       </div>
       <form method="dialog" className="sheet-actions">
         <Button type="submit">닫기</Button>

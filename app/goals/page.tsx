@@ -51,13 +51,13 @@ export default async function GoalsPage({ searchParams }: { searchParams: Search
 
   return (
     <div className="screen screen-warm goals">
-      <header className="headline headline-row">
-        <div>
-          <h1>내 목표</h1>
-        </div>
-        <Link href="/goals/new" className="add-btn">
-          <Icon name="plus" size={17} weight={2.2} />새 목표
+      <div className="topbar topbar-end">
+        <Link href="/goals/new" className="nav-btn nav-add" aria-label="새 목표">
+          <Icon name="plus" size={22} weight={2} />
         </Link>
+      </div>
+      <header className="headline">
+        <h1>내 목표</h1>
       </header>
       {search.notice === "deleted" && <Notice tone="success">목표를 지웠어요.</Notice>}
 

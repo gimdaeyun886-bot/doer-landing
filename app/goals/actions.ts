@@ -253,6 +253,7 @@ export async function saveLocks(_prev: { message?: string; saved?: boolean }, fo
   const ok = await saveSettings({ lock_targets: formData.getAll("lock").map(String) });
   revalidatePath("/today");
   revalidatePath("/settings");
+  revalidatePath("/settings/locks");
   return ok ? { saved: true } : { message: SAVE_FAILED };
 }
 

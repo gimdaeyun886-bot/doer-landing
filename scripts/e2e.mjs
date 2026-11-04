@@ -397,7 +397,10 @@ console.log("\n[기록]");
 await page.goto(BASE + "/records");
 await settle();
 await shot("5-records", true);
-check("기록 화면에 최근 일주일 칸 7개와 숫자 타일이 보임", (await page.locator(".week li").count()) === 7 && (await page.locator(".tiles div").count()) === 4);
+check(
+  "기록 화면에 일주일 칸과 숫자, 또는 첫 기록 안내가 보임",
+  ((await page.locator(".week li").count()) === 7 && (await page.locator(".tiles div").count()) === 4) || (await page.getByText("첫 기록을 기다리고 있어요").count()) === 1,
+);
 await page.goto(BASE + "/today");
 await settle();
 check("연속 기록은 이틀째부터 오늘 화면에 보임", (await page.locator(".streak-badge").count()) === 0 || /\d+일째/.test(await page.locator(".streak-badge").innerText()));
@@ -406,13 +409,20 @@ check("연속 기록은 이틀째부터 오늘 화면에 보임", (await page.lo
 console.log("\n[5] 내 정보");
 await page.goto(BASE + "/settings");
 await settle();
-await page.locator(".settings-card").getByRole("button", { name: /앱 더 고르기|잠글 앱 고르기/ }).click();
+await shot("5-settings", true);
+await page.getByRole("link", { name: /잠글 앱/ }).click();
+await page.waitForURL(/\/settings\/locks/);
+await settle();
+check("고친 것이 없으면 저장 버튼이 꺼져 있음", await page.getByRole("button", { name: "저장", exact: true }).isDisabled());
+await page.getByRole("button", { name: /앱 더 고르기|잠글 앱 고르기/ }).click();
 await page.locator("dialog.app-sheet[open]").getByRole("button", { name: /틱톡/ }).click();
 await page.locator("dialog.app-sheet[open] .sheet-actions .btn").click();
 await page.getByRole("button", { name: "저장", exact: true }).click();
 await page.getByText("저장했어요").waitFor({ timeout: 20000 });
-await shot("5-settings", true);
-check("잠글 앱을 바꿔 저장할 수 있음", true);
+await shot("5-settings-locks", true);
+await page.goto(BASE + "/settings");
+await settle();
+check("잠글 앱을 바꿔 저장하면 내 정보에 앱 수가 보임", /\d+개 앱/.test(await page.getByRole("link", { name: /잠글 앱/ }).innerText()));
 await page.goto(BASE + "/privacy");
 await settle();
 await shot("5-privacy");

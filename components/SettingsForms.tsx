@@ -3,27 +3,34 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { deleteAccount } from "@/app/auth/actions";
 import { saveLocks } from "@/app/goals/actions";
+import { lockAppCount } from "@/lib/goals";
 import { native } from "@/lib/native";
 import { LockPicker } from "./LockPicker";
-import { Button, Icon, Notice } from "./ui";
+import { Button, Icon, NavButton, Notice } from "./ui";
 
-// 잠글 앱을 고쳐 저장한다. 모든 목표에 똑같이 적용된다.
+// 잠글 앱 화면. 고친 것이 있을 때만 위쪽 '저장'이 켜진다. 모든 목표에 똑같이 적용된다.
 export function LockSettings({ initial }: { initial: string[] }) {
   const [value, setValue] = useState(initial);
   const [state, action, pending] = useActionState(saveLocks, {});
   const dirty = JSON.stringify(value) !== JSON.stringify(initial);
+  const count = lockAppCount(value);
   return (
-    <form action={action} className="card settings-card">
-      <div className="card-head">
-        <h2>잠글 앱</h2>
-        <span>{value.length ? `${value.length}곳` : "없음"}</span>
+    <form action={action} className="lock-settings">
+      <div className="topbar">
+        <NavButton href="/settings" icon="chevL" label="내 정보로 돌아가기" />
+        <button type="submit" className="nav-text" disabled={pending || !dirty}>
+          {pending ? "저장 중" : "저장"}
+        </button>
       </div>
-      <LockPicker value={value} onChange={setValue} name="lock" />
+      <header className="headline">
+        <p className="date">{count ? `${count}개 앱` : "고른 앱 없음"}</p>
+        <h1>잠글 앱</h1>
+      </header>
       {state.message && <Notice tone="error">{state.message}</Notice>}
       {state.saved && !dirty && <Notice tone="success">저장했어요. 다음 시작부터 적용돼요.</Notice>}
-      <Button type="submit" variant="soft" disabled={pending || !dirty}>
-        {pending ? "저장하는 중…" : "저장"}
-      </Button>
+      <fieldset disabled={pending} className="plain-fieldset">
+        <LockPicker value={value} onChange={setValue} name="lock" />
+      </fieldset>
     </form>
   );
 }
@@ -39,23 +46,34 @@ export function AccessStatus() {
   }, []);
   if (status === "none") return null;
   return (
-    <section className="card settings-card">
-      <div className="card-head">
+    <section className="group">
+      <div className="section-head">
         <h2>잠금 권한</h2>
-        <span data-on={status === "on"}>{status === "on" ? "켜짐" : "꺼짐"}</span>
       </div>
-      <p className="row-hint">
+      <div className="section rows">
+        {status === "on" ? (
+          <div className="row">
+            <span className="row-text">
+              <b>접근성 권한</b>
+            </span>
+            <span className="row-value" data-on="true">
+              켜짐
+            </span>
+          </div>
+        ) : (
+          <button type="button" className="row" onClick={() => native()?.openAccessSettings()}>
+            <span className="row-text">
+              <b>접근성 권한</b>
+            </span>
+            <span className="row-value">꺼짐 · 켜러 가기</span>
+            <Icon name="chevR" size={16} />
+          </button>
+        )}
+        {status === "on" ? <SeenIds /> : <AccessHelp />}
+      </div>
+      <p className="group-foot">
         접근성 권한으로 지금 열린 앱이 잠근 앱인지만 확인해요. 화면의 글이나 입력한 내용은 읽지도 모으지도 않아요. 언제든 끌 수 있고, 끄면 그날은 인증하지 못한 날로 남아요.
       </p>
-      {status === "on" && <SeenIds />}
-      {status === "off" && (
-        <>
-          <Button type="button" variant="soft" onClick={() => native()?.openAccessSettings()}>
-            권한 켜러 가기
-          </Button>
-          <AccessHelp />
-        </>
-      )}
     </section>
   );
 }
@@ -109,8 +127,10 @@ export function DeleteAccount() {
   const [state, action, pending] = useActionState(deleteAccount, {});
   return (
     <>
-      <button type="button" className="text-btn danger" onClick={() => dialog.current?.showModal()}>
-        탈퇴하기
+      <button type="button" className="row row-danger" onClick={() => dialog.current?.showModal()}>
+        <span className="row-text">
+          <b>탈퇴하기</b>
+        </span>
       </button>
       <dialog ref={dialog} className="sheet" aria-labelledby="bye-title">
         <span className="sheet-grip" aria-hidden="true" />
