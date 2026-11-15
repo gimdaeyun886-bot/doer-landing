@@ -262,4 +262,4 @@ public/                   예전 소개 페이지(열지 않음)와 그림(art/)
 
 ## QA 결과
 
-체크리스트와 점검 결과는 [docs/QA.md](docs/QA.md)에 있습니다.
+체크리스트와 점검 결과는 [docs/QA.md](docs/QA.md)에 있습니다. 서버 기능 목록(입력, 결과, 실패 응답)은 [docs/API.md](docs/API.md)에 있습니다.
