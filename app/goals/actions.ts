@@ -8,6 +8,7 @@ import {
   MATERIAL_TYPES,
   addDays,
   cleanLockTargets,
+  dedupeFacts,
   isKind,
   isRealDate,
   isUuid,
@@ -15,6 +16,7 @@ import {
   planEnd,
   readValues,
   tasksOn,
+  needsNewDate,
   todayInSeoul,
   validateValues,
   verifyTypeOf,
@@ -24,14 +26,17 @@ import {
   type GoalValues,
   type Plan,
 } from "@/lib/goals";
-import { EMPTY_SLOTS, coachTurn, generatePlan, judgeAnswer, makeQuiz, readMaterial, suggestAdjustments, toDataUrl, verifyProof, type ChatMessage, type Slots, type TurnResult } from "@/lib/plan";
-import { getSupabase, goalColumns, hasContext, getUser, isConfigured, listPlannedGoals, saveSettings } from "@/lib/supabase";
+import { EMPTY_SLOTS, coachTurn, generatePlan, judgeAnswer, makeQuiz, readMaterial, suggestAdjustments, suggestRecovery, toDataUrl, verifyProof, type ChatMessage, type Slots, type TurnResult } from "@/lib/plan";
+import { applyPick, basicOptions, checkPick, describePick, repairDate, room, slotsFor } from "@/lib/recover";
+import { getSupabase, goalColumns, hasContext, getUser, isConfigured, listPlannedGoals, lockedNow, purgeGoals, recoveryState, saveSettings } from "@/lib/supabase";
 
 const NOT_CONFIGURED = "저장소가 아직 연결되지 않았어요. 환경 변수를 확인해 주세요.";
 const NEED_LOGIN = "로그인이 풀렸어요. 다시 로그인해 주세요.";
 const SAVE_FAILED = "저장하지 못했어요. 잠시 후 다시 시도해 주세요.";
 const UPLOAD_FAILED = "사진을 올리지 못했어요. 사진을 빼고 저장하거나 잠시 후 다시 시도해 주세요.";
 const INVALID = "표시한 곳을 다시 확인해 주세요.";
+// 잠긴 동안 할 일이나 잠글 앱을 바꾸면 잠금이 바로 풀리므로 막는다. 버거운 날의 길은 코치와의 조정이다.
+const LOCKED = "잠금 중에는 할 수 없어요. 오늘 할 일을 모두 인증하거나, 버거우면 코치와 조정한 뒤에 해 주세요.";
 // 인증 사진 원본은 이의 제기를 받을 수 있는 동안만 둔다.
 const PROOF_KEEP_DAYS = 7;
 
@@ -70,10 +75,19 @@ async function clearProofs(goalId: string, from?: string) {
 }
 
 // 계획을 만들어 목표에 저장한다. 실패해도 목표는 남고, 상세 화면에서 다시 만들 수 있다.
+// 지난 날의 계획은 그대로 둔다(기록과 연속 기록이 그 날의 할 일로 계산된다). 오늘 이미 인증한 것이 있으면 오늘 몫도 그대로 둔다.
 async function planAndSave(goal: Goal) {
   const result = await generatePlan(goal);
+  if (result.ok) {
+    const today = todayInSeoul();
+    const { data: todayProofs } = await (await getSupabase()).from("proofs").select("task_id").eq("goal_id", goal.id).eq("date", today).limit(1);
+    const keepToday = Boolean(todayProofs?.length);
+    const old = (goal.plan?.days ?? []).filter((day) => day.date < today || (keepToday && day.date === today));
+    const fresh = result.plan.days.filter((day) => day.date > today || (!keepToday && day.date === today));
+    result.plan.days = [...old, ...fresh].sort((a, b) => a.date.localeCompare(b.date));
+    if (!keepToday) await clearProofs(goal.id, today);
+  }
   const patch = result.ok ? { plan: result.plan, plan_status: "ready", plan_generated_at: new Date().toISOString() } : { plan_status: "failed" };
-  if (result.ok) await clearProofs(goal.id, todayInSeoul());
   const { error } = await (await getSupabase()).from("goals").update(patch).eq("id", goal.id);
   if (error) console.error("plan save failed:", error.message);
   return result.ok && !error ? null : result.ok ? "만든 계획을 저장하지 못했어요. 다시 시도해 주세요." : result.message;
@@ -114,7 +128,7 @@ function cleanSlots(raw: Slots): Slots {
     schedule: text(raw?.schedule, LIMITS.schedule),
     daily_minutes: Number.isFinite(minutes) && minutes > 0 ? Math.round(minutes) : null,
     note: text(raw?.note, LIMITS.note),
-    facts: Array.isArray(raw?.facts) ? raw.facts.map((fact) => String(fact).trim().slice(0, 100)).filter(Boolean).slice(0, LIMITS.facts) : [],
+    facts: Array.isArray(raw?.facts) ? dedupeFacts(raw.facts.map((fact) => String(fact).trim().slice(0, 100))).slice(0, LIMITS.facts) : [],
     material_summary: text(raw?.material_summary, LIMITS.summary),
     lock_targets: Array.isArray(raw?.lock_targets) ? cleanLockTargets(raw.lock_targets.map(String)) : null,
   };
@@ -156,7 +170,8 @@ export async function createGoal(prev: FormState, formData: FormData): Promise<F
   }
 
   const goal = data as unknown as Goal;
-  await saveSettings({ lock_targets: values.lock_targets });
+  // 잠긴 동안에는 잠글 앱을 바꾸지 않는다. 새 목표의 할 일은 더해지기만 하므로 막지 않는다.
+  if (!(await lockedNow())) await saveSettings({ lock_targets: values.lock_targets });
   const planProblem = await planAndSave(goal);
   revalidatePath("/goals");
   revalidatePath("/today");
@@ -169,9 +184,10 @@ export async function updateGoal(id: string, prev: FormState, formData: FormData
   if (invalid) return { attempt, errors, values, message: INVALID };
   if (!isConfigured()) return { attempt, values, message: NOT_CONFIGURED };
   if (!isUuid(id)) return { attempt, values, message: "고칠 목표를 찾지 못했어요." };
+  if (await lockedNow()) return { attempt, values, message: LOCKED };
 
   const supabase = await getSupabase();
-  const { data: before, error: readError } = await supabase.from("goals").select(await goalColumns()).eq("id", id).maybeSingle();
+  const { data: before, error: readError } = await supabase.from("goals").select(await goalColumns()).eq("id", id).is("deleted_at", null).maybeSingle();
   if (readError) return { attempt, values, message: SAVE_FAILED };
   if (!before) return { attempt, values, message: "이미 지운 목표예요. 목록으로 돌아가 주세요." };
   const current = before as unknown as Goal;
@@ -181,7 +197,7 @@ export async function updateGoal(id: string, prev: FormState, formData: FormData
   const materialPath = newPath ?? (formData.get("remove_material") === "on" ? null : current.material_path);
 
   const summary = file ? await readMaterial(await toDataUrl(file)) : formData.get("remove_material") === "on" ? null : current.material_summary;
-  const { data, error } = await supabase.from("goals").update(await toRow(values, materialPath, summary)).eq("id", id).select(await goalColumns()).maybeSingle();
+  const { data, error } = await supabase.from("goals").update(await toRow(values, materialPath, summary)).eq("id", id).is("deleted_at", null).select(await goalColumns()).maybeSingle();
   if (error || !data) {
     console.error("goal update failed:", error?.message);
     await removeFiles([newPath]);
@@ -211,8 +227,11 @@ export async function updateGoal(id: string, prev: FormState, formData: FormData
 export async function regeneratePlan(id: string, _prev: { message?: string }, _formData: FormData): Promise<{ message?: string }> {
   if (!isConfigured()) return { message: NOT_CONFIGURED };
   if (!isUuid(id)) return { message: "목표를 찾지 못했어요." };
-  const { data, error } = await (await getSupabase()).from("goals").select(await goalColumns()).eq("id", id).maybeSingle();
+  if (await lockedNow()) return { message: LOCKED };
+  const { data, error } = await (await getSupabase()).from("goals").select(await goalColumns()).eq("id", id).is("deleted_at", null).maybeSingle();
   if (error || !data) return { message: "목표를 찾지 못했어요." };
+  // 목표일이 지난 날짜 있는 목표는 새 날짜를 정해야 짤 수 있다(목표 고치기에서 날짜를 바꾸면 다시 짠다).
+  if (needsNewDate(data as unknown as Goal, todayInSeoul())) return { message: "목표일이 지났어요. 목표 고치기에서 새 날짜를 정하면 다시 짜요." };
 
   const problem = await planAndSave(data as unknown as Goal);
   revalidatePath("/goals");
@@ -221,21 +240,48 @@ export async function regeneratePlan(id: string, _prev: { message?: string }, _f
   redirect(`/goals/${id}?notice=replanned`);
 }
 
+// 지우면 휴지통으로 옮긴다. 30일 안에는 되살릴 수 있고, 그 뒤에는 lib/supabase.ts의 sweepGoals가 완전히 지운다.
+// 잠금 중에는 막는다. 오늘 할 일이 든 목표를 치우면 잠금이 바로 풀리기 때문이다.
 export async function deleteGoal(id: string, _prev: { message?: string }, _formData: FormData): Promise<{ message?: string }> {
   if (!isConfigured()) return { message: NOT_CONFIGURED };
   if (!isUuid(id)) return { message: "지울 목표를 찾지 못했어요." };
+  if (await lockedNow()) return { message: LOCKED };
 
-  await clearProofs(id);
-  const { data, error } = await (await getSupabase()).from("goals").delete().eq("id", id).select("material_path").maybeSingle();
+  const { error } = await (await getSupabase()).from("goals").update({ deleted_at: new Date().toISOString() }).eq("id", id).is("deleted_at", null);
   if (error) {
-    console.error("goal delete failed:", error.message);
+    console.error("goal trash failed:", error.message);
     return { message: "지우지 못했어요. 잠시 후 다시 시도해 주세요." };
   }
-  await removeFiles([data?.material_path as string | null | undefined]);
 
   revalidatePath("/goals");
   revalidatePath("/today");
   redirect("/goals?notice=deleted");
+}
+
+// 휴지통에서 되살린다. 계획과 인증 기록은 지울 때 그대로 남아 있다.
+export async function restoreGoal(id: string, _prev: { message?: string }, _formData: FormData): Promise<{ message?: string }> {
+  if (!isConfigured()) return { message: NOT_CONFIGURED };
+  if (!isUuid(id)) return { message: "되살릴 목표를 찾지 못했어요." };
+  const { data, error } = await (await getSupabase()).from("goals").update({ deleted_at: null }).eq("id", id).not("deleted_at", "is", null).select("id").maybeSingle();
+  if (error || !data) {
+    if (error) console.error("goal restore failed:", error.message);
+    return { message: "되살리지 못했어요. 이미 완전히 지워졌을 수 있어요." };
+  }
+  revalidatePath("/goals");
+  revalidatePath("/today");
+  redirect(`/goals/${id}?notice=restored`);
+}
+
+// 휴지통에 든 목표를 30일을 기다리지 않고 바로 완전히 지운다. 되돌릴 수 없다.
+export async function purgeGoal(id: string, _prev: { message?: string }, _formData: FormData): Promise<{ message?: string }> {
+  if (!isConfigured()) return { message: NOT_CONFIGURED };
+  if (!isUuid(id)) return { message: "지울 목표를 찾지 못했어요." };
+  const { data } = await (await getSupabase()).from("goals").select("id").eq("id", id).not("deleted_at", "is", null).maybeSingle();
+  if (!data) return { message: "휴지통에서 찾지 못했어요. 이미 지워졌을 수 있어요." };
+  if (!(await purgeGoals([id]))) return { message: "지우지 못했어요. 잠시 후 다시 시도해 주세요." };
+  revalidatePath("/goals");
+  revalidatePath("/goals/trash");
+  redirect("/goals/trash?notice=purged");
 }
 
 /* ───────── 오늘: 시작, 인증, 이의 제기, 조정 ───────── */
@@ -250,6 +296,7 @@ export async function startToday(): Promise<{ ok: boolean }> {
 
 export async function saveLocks(_prev: { message?: string; saved?: boolean }, formData: FormData): Promise<{ message?: string; saved?: boolean }> {
   if (!isConfigured() || !(await getUser())) return { message: NEED_LOGIN };
+  if (await lockedNow()) return { message: LOCKED };
   const ok = await saveSettings({ lock_targets: formData.getAll("lock").map(String) });
   revalidatePath("/today");
   revalidatePath("/settings");
@@ -259,7 +306,7 @@ export async function saveLocks(_prev: { message?: string; saved?: boolean }, fo
 
 async function loadTodayTask(goalId: string, taskId: string) {
   if (!isUuid(goalId)) return null;
-  const { data } = await (await getSupabase()).from("goals").select(await goalColumns()).eq("id", goalId).maybeSingle();
+  const { data } = await (await getSupabase()).from("goals").select(await goalColumns()).eq("id", goalId).is("deleted_at", null).maybeSingle();
   const goal = data as unknown as Goal | null;
   const task = goal ? tasksOn(goal, todayInSeoul()).find((item) => item.id === taskId) : null;
   return goal && task ? { goal, task } : null;
@@ -380,7 +427,22 @@ export async function requestAdjustment(reason: string): Promise<AdjustState> {
   // 코치가 돌려준 안에서 실제 오늘 할 일을 가리키는 것만 남긴다.
   const known = new Set(input.flatMap((item) => item.today.map((task) => `${item.goal.id}:${task.id}`)));
   const real = (entry: { goal_id: string; task_id: string }) => known.has(`${entry.goal_id}:${entry.task_id}`);
-  const cleaned = result.options.map((option) => ({ ...option, moves: option.moves.filter(real), drops: option.drops.filter(real) })).filter((option) => option.moves.length || option.drops.length);
+  // 옮겨 받는 날이 하루 분량 상한(놓친 날 정리와 같은 값)을 넘는 안은 버린다.
+  const fits = (option: AdjustOption) => {
+    const added = new Map<string, number>();
+    return option.moves.every((move) => {
+      const goal = goals.find((item) => item.id === move.goal_id);
+      const task = goal && tasksOn(goal, today).find((item) => item.id === move.task_id);
+      if (!goal || !task) return false;
+      const key = `${goal.id}|${move.to_date}`;
+      const sum = (added.get(key) ?? 0) + task.minutes;
+      added.set(key, sum);
+      return sum <= room(goal, String(move.to_date));
+    });
+  };
+  const cleaned = result.options
+    .map((option) => ({ ...option, moves: option.moves.filter(real), drops: option.drops.filter(real) }))
+    .filter((option) => (option.moves.length || option.drops.length) && fits(option));
   // 오늘 할 일을 모두 비우는 안은 그날 잠금을 푸는 것과 같다. 지시문만 믿지 않고 여기서 막는다.
   // 남은 과제가 둘 이상이면 그런 안은 하나까지만, 오늘 무언가 남는 안들 뒤에 둔다.
   // 남은 과제가 하나뿐이면 어떤 조정이든 오늘을 비우게 되므로, 대가를 보여 주는 조건으로 그대로 둔다.
@@ -410,7 +472,9 @@ export async function applyAdjustment(reason: string, option: AdjustOption): Pro
       const to = String(move.to_date);
       // 매주 반복하는 목표는 옮기지 않고 빼기만 한다. 옮길 날은 내일부터 계획이 끝나는 날(날짜 없는 목표는 그 뒤 7일)까지.
       const limit = goal.kind === "finish" ? addDays(end, 7) : end;
-      if (index < 0 || goal.kind === "ongoing" || !isRealDate(to) || to <= today || to > limit) continue;
+      // 놓친 날에서 옮겨 온 일은 다시 옮기지 않는다(미루기를 되풀이하지 않게).
+      if (index < 0 || goal.kind === "ongoing" || todayDay.tasks[index].carried || !isRealDate(to) || to <= today || to > limit) continue;
+      if (todayDay.tasks[index].minutes > room({ ...goal, plan }, to)) continue;
       const [task] = todayDay.tasks.splice(index, 1);
       let target = plan.days.find((day) => day.date === to);
       if (!target) {
@@ -443,4 +507,78 @@ export async function applyAdjustment(reason: string, option: AdjustOption): Pro
   // 오늘 화면은 사용자가 결과를 확인한 뒤 브라우저 쪽에서 새로 그린다. 여기서 다시 그리면 결과 창이 먼저 사라진다.
   revalidatePath("/goals");
   return { ok: true };
+}
+
+/* ───────── 놓친 날 이어 가기 ───────── */
+
+export type RecoverOption = AdjustOption & { source: "basic" | "coach" };
+export type RecoverState = { reply?: string; options?: RecoverOption[]; message?: string; fallback?: boolean };
+const NOT_READY = "이 기능을 쓰려면 저장소 설정을 한 번 더 해야 해요. 운영자에게 알려 주세요.";
+
+// 지난 며칠 동안 못 한 일을 어떻게 할지 안을 보여 준다. 고르기 전에는 아무것도 바뀌지 않는다.
+// 기본안(나눠 넣기, 넘기기)은 코드가 늘 만든다. 사정을 말하면 코치가 무엇을 살릴지 고른 안을 그 위에 더한다.
+export async function requestRecovery(reason: string): Promise<RecoverState> {
+  if (!isConfigured() || !(await getUser())) return { message: NEED_LOGIN };
+  const text = String(reason ?? "").trim().slice(0, LIMITS.reason);
+  const { ready, ctx, repairOk } = await recoveryState();
+  if (!ready) return { message: NOT_READY };
+  if (!ctx.missed.length) return { message: "정리할 놓친 일이 없어요." };
+  const basic: RecoverOption[] = basicOptions(ctx, repairOk).map((option) => ({ ...option, source: "basic" }));
+  const slots = slotsFor(ctx);
+  // 사정을 말하지 않았거나, 옮겨 넣을 날이 없으면 코치를 부르지 않는다.
+  if (!text || !slots.length) return { reply: slots.length ? "이렇게 정리할 수 있어요." : "옮겨 넣을 수 있는 날이 없어서, 이번엔 넘기는 방법만 있어요.", options: basic };
+  const result = await suggestRecovery({ missed: ctx.missed, slots }, text);
+  if (!result.ok) return { reply: `${result.message} 기본 방법으로 정리할 수 있어요.`, options: basic, fallback: true };
+  const same = (a: { moves: { goal_id: string; task_id: string; to_date: string }[] }, b: { moves: { goal_id: string; task_id: string; to_date: string }[] }) =>
+    a.moves.map((m) => `${m.goal_id}:${m.task_id}:${m.to_date}`).sort().join() === b.moves.map((m) => `${m.goal_id}:${m.task_id}:${m.to_date}`).sort().join();
+  const coach: RecoverOption[] = [];
+  for (const option of result.options) {
+    const pick = checkPick(option, ctx);
+    // 규칙에 어긋나거나 기본안과 같은 안은 버린다.
+    if (!pick || !pick.moves.length || [...basic, ...coach].some((other) => same(other, pick))) continue;
+    coach.push({ label: option.label, impact: `${option.why ? `${option.why} ` : ""}${describePick(pick, ctx, repairOk)}`.slice(0, 280), ...pick, source: "coach" });
+  }
+  return { reply: result.reply || "이렇게 정리할 수 있어요.", options: [...coach, ...basic] };
+}
+
+// 고른 안을 반영한다. 받은 안은 믿지 않고 지금의 놓친 일과 규칙으로 다시 검사한 뒤, 대가 설명도 서버에서 다시 쓴다.
+// 같은 날을 두 번 정리하지 않도록 정리 기록(adjustments, kind='recover')을 먼저 남기고 계획을 바꾼다.
+export async function applyRecovery(reason: string, option: RecoverOption): Promise<{ ok: boolean; message?: string; impact?: string }> {
+  if (!isConfigured() || !(await getUser())) return { ok: false, message: NEED_LOGIN };
+  const { ready, ctx, repairOk } = await recoveryState();
+  if (!ready) return { ok: false, message: NOT_READY };
+  if (!ctx.missed.length) return { ok: true, message: "이미 정리했어요." };
+  const pick = checkPick(option, ctx);
+  if (!pick) return { ok: false, message: "그사이 계획이 바뀌어 이 방법은 쓸 수 없어요. 다시 골라 주세요." };
+  const impact = describePick(pick, ctx, repairOk);
+  const repair = repairOk ? repairDate(pick, ctx.missed) : null;
+  const dates = [...new Set(ctx.missed.map((item) => item.date))];
+  const supabase = await getSupabase();
+  const base = {
+    date: ctx.today,
+    kind: "recover",
+    reason: String(reason ?? "").trim().slice(0, LIMITS.reason),
+    choice: String(option?.label ?? "").slice(0, 40),
+    impact: impact.slice(0, 280),
+    source: option?.source === "coach" ? "coach" : "basic",
+  };
+  const claim = await supabase.from("adjustments").insert(dates.map((date) => ({ ...base, for_date: date, repairs: date === repair })));
+  if (claim.error) {
+    if (claim.error.code === "23505") return { ok: true, message: "이미 정리했어요." };
+    console.error("recover claim failed:", claim.error.message);
+    return { ok: false, message: claim.error.code === "42703" ? NOT_READY : SAVE_FAILED };
+  }
+  for (const [goalId, plan] of applyPick(pick, ctx.missed)) {
+    const { error } = await supabase.from("goals").update({ plan }).eq("id", goalId);
+    if (error) {
+      console.error("recover save failed:", error.message);
+      // 계획을 못 바꿨으면 정리 기록도 거둬서 다시 고를 수 있게 한다.
+      await supabase.from("adjustments").delete().eq("kind", "recover").in("for_date", dates).eq("date", ctx.today);
+      return { ok: false, message: SAVE_FAILED };
+    }
+  }
+  console.info(`recover chosen: source=${base.source} moves=${pick.moves.length} drops=${pick.drops.length} repair=${Boolean(repair)}`);
+  revalidatePath("/today");
+  revalidatePath("/records");
+  return { ok: true, impact };
 }

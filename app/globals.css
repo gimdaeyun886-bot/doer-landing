@@ -1559,3 +1559,239 @@ button.row, .rows form .row { width: 100%; border: 0; background: none; font: in
 .nav-title { position: fixed; top: 0; left: 50%; z-index: 6; display: grid; place-items: center; width: 100%; max-width: 460px; height: calc(44px + env(safe-area-inset-top)); margin: 0 !important; padding-top: env(safe-area-inset-top); transform: translateX(-50%); background: rgba(244, 238, 230, 0.86); -webkit-backdrop-filter: saturate(1.6) blur(20px); backdrop-filter: saturate(1.6) blur(20px); box-shadow: inset 0 -0.5px 0 var(--sep); color: var(--ink); font-size: 17px; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
 .nav-title[data-shown] { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .nav-title { transition: none; } }
+
+/* 점검 반영 (2026-11-12): 오늘 화면 새 배치, 코치 탭, 남은 푸른 회색과 작은 누름 영역 정리 */
+html { background: var(--bg); }
+.keep-note, .welcome-legal, .count { color: var(--mut) !important; }
+.check { border-color: #d8cdc1; }
+.cal-cell:disabled { color: var(--faint); background: none; }
+.ring-track { stroke: var(--hair); }
+.understood { background: var(--tint); }
+.composer-send:disabled { background: #e3d9cd; color: var(--white); }
+.skeleton { background: linear-gradient(90deg, var(--tint) 25%, #ece5db 50%, var(--tint) 75%); background-size: 200% 100%; }
+.cal-head, .cal-head:first-of-type { color: var(--mut); }
+.wordmark { color: var(--coral-text); }
+
+/* 확인 창의 입력 묶음은 칸 안쪽 여백을 갖고, 예전 아래 띠는 지운다 */
+.sheet-list { padding: 0 16px; border-radius: 12px; background: var(--cell); }
+.confirm .dock { background: var(--cell); }
+
+/* 오늘: 맥락 한 줄 → 잠금 상태 → 할 일 묶음 → 버튼 */
+.today-context { margin-top: 4px; color: var(--sub); font-size: 15px; line-height: 21px; overflow-wrap: anywhere; }
+.lock-state { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 12px; background: var(--cell); }
+.lock-state[data-tone="lock"] { background: var(--coral-soft); }
+.lock-icon { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 10px; background: var(--tint); color: var(--sub); }
+.lock-state[data-tone="lock"] .lock-icon { background: var(--cell); color: var(--coral-text); }
+.lock-state[data-tone="done"] .lock-icon { background: var(--green); color: #fff; }
+.lock-text { display: grid; flex: 1; gap: 2px; min-width: 0; }
+.lock-text b { font-size: 16px; font-weight: 600; line-height: 22px; color: var(--ink); }
+.lock-text small { font-size: 13px; line-height: 18px; color: var(--sub); }
+.lock-bar { display: block; height: 4px; margin-top: 6px; border-radius: 2px; background: rgba(60, 40, 20, 0.1); overflow: hidden; }
+.lock-bar i { display: block; height: 100%; border-radius: 2px; background: var(--green); transition: width 0.4s var(--ease); }
+.lock-count { flex: none; font-size: 15px; font-weight: 600; color: var(--sub); font-variant-numeric: tabular-nums; }
+.today section.group[aria-label="오늘 할 일 목록"] { padding: 0; border-radius: 0; background: none; }
+.today .lock-state + .group, .today .lock-state + .recover-row { margin-top: 12px; }
+.today .today-list.section { padding: 0 16px; border-radius: 12px; background: var(--cell); }
+.today-row, .today-list li:first-child .today-row { width: calc(100% + 32px); }
+.today .nudge { position: static; margin-top: auto; }
+.today .nudge + .dock { margin-top: 12px; }
+@media (prefers-reduced-motion: reduce) { .lock-bar i { transition: none; } }
+
+/* 코치 탭 */
+.hub-hello { display: flex; align-items: center; gap: 14px; padding: 0 4px; }
+.hub-hello p { margin: 0; color: var(--sub); font-size: 15px; line-height: 22px; }
+.row-quiet { cursor: default; }
+.row-quiet b { color: var(--mut); font-weight: 500; }
+.row-quiet:active { background: none; }
+.coach-mark, .nudge .coach-mark { background: var(--coral-soft); box-shadow: none; }
+h1.chat-name { margin: 0; }
+
+/* 확인 창의 잠글 앱 줄, 계획 다시 만들기 안내 */
+.lock-summary { margin: 0; padding: 13px 0; font-size: 16px; line-height: 22px; color: var(--ink); }
+.lock-row .section-head { display: flex; align-items: center; justify-content: space-between; }
+.replan-hint { margin: 0; padding: 0 0 12px; color: var(--mut); font-size: 13px; line-height: 18px; }
+
+/* 둘러보기의 다음 버튼: 흰 글자를 올리지 않고 옅은 코랄 위에 짙은 글자 */
+.tour-next { background: var(--coral-soft); color: var(--coral-text); font-weight: 600; }
+
+/* 처리방침·약관도 같은 칸 */
+.doc section { border-radius: 12px; background: var(--cell); box-shadow: none; }
+
+/* 조정·정리 안: 칸 줄, 대가는 본문 색, 아이콘만 코랄 */
+.adjust-list button { border-radius: 12px; background: var(--cell); box-shadow: none; }
+.adjust-list span { color: var(--sub); }
+.adjust-list span .icon { color: var(--coral-text); }
+.sheet .btn-soft, .sheet .btn-quiet { background: var(--tint); }
+
+/* 누름 영역 44px 이상 */
+.text-btn { min-height: 44px; display: inline-flex; align-items: center; }
+.row .text-btn, .section-head .text-btn { color: var(--coral-text); }
+.composer-send, .composer-photo { width: 44px; height: 44px; }
+.icon-btn { min-width: 44px; min-height: 44px; }
+.lock-chosen .icon-btn { min-width: 44px; min-height: 44px; width: 44px; height: 44px; background: none; }
+.chip-btn, .chip span { min-height: 44px; }
+.nudge-actions a, .nudge-actions button { min-height: 44px; }
+
+/* 입력: 글자 16px(휴대폰 확대 방지), 쓰는 중인 칸이 보이게 */
+.composer textarea, .proof-text, .quiz textarea, .appeal textarea, input[type="text"], input[type="email"], input[type="password"], input[type="search"] { font-size: 16px; }
+.composer:focus-within { outline: 2px solid var(--coral); outline-offset: 2px; }
+.celebrate .btn:focus-visible { outline: 2px solid var(--coral-text); outline-offset: 3px; box-shadow: none; }
+
+/* 기록: 칸 안 기호를 가운데에, 범례는 같은 기호로 */
+.week i { display: grid; place-items: center; color: var(--sub); font-style: normal; }
+.week [data-state="done"] i { color: #fff; }
+.week [data-state="adjusted"] i { color: #7a5a35; }
+.week [data-state="missed"] i { color: var(--red); }
+.week-legend li::before { display: none; }
+.week-legend [data-state="rest"]::before { display: inline-block; }
+.week-legend [data-state="done"] .icon { color: var(--green); }
+.week-legend [data-state="adjusted"] .icon { color: #7a5a35; }
+.week-legend [data-state="missed"] .icon { color: var(--red); }
+
+/* 넓은 화면(PC)에서는 앱을 휴대폰 비율(약 9:19.5)의 틀에 고정해 보여 준다. 휴대폰과 안드로이드 앱에서는 그대로 화면 전체를 쓴다.
+   틀(.app)이 스크롤을 맡고, 화면 높이(100dvh)를 쓰던 곳은 틀 높이(--app-h)를 쓴다. 고정 위치 요소와 창(시트)은 틀에 맞춘다. */
+@media (min-width: 600px) and (min-height: 600px) {
+  :root {
+    --app-h: min(calc(100dvh - 48px), 900px);
+    --app-w: clamp(360px, calc(var(--app-h) * 0.4615), 430px);
+    --app-top: calc((100dvh - var(--app-h)) / 2);
+    --app-r: 40px;
+  }
+  html, body { height: 100%; overflow: hidden; background: #e9e0d4 !important; }
+  .app { width: var(--app-w); max-width: none; height: var(--app-h); min-height: 0; margin: var(--app-top) auto 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; border-radius: var(--app-r); box-shadow: 0 0 0 9px #2a2420, 0 0 0 10px #4a3f37, 0 40px 80px -30px rgba(60, 40, 20, 0.55) !important; }
+  .app::-webkit-scrollbar { display: none; }
+  .screen { min-height: var(--app-h); }
+  .chat { height: var(--app-h); }
+  .celebrate { min-height: 0; }
+
+  /* 틀 위에 뜨는 것: 접히는 제목, 계획을 만드는 동안의 화면, 둘러보기 카드 */
+  .nav-title { top: var(--app-top); width: var(--app-w); max-width: none; height: 44px; padding-top: 0; border-radius: var(--app-r) var(--app-r) 0 0; }
+  .planning { top: var(--app-top); bottom: auto; left: calc(50% - var(--app-w) / 2); right: auto; width: var(--app-w); height: var(--app-h); border-radius: var(--app-r); }
+  .tour-card { left: calc(50% - var(--app-w) / 2 + 16px); right: calc(50% - var(--app-w) / 2 + 16px); }
+
+  /* 아래에서 올라오는 창은 틀의 바닥에 붙인다 */
+  .screen > dialog, dialog.sheet { margin: auto auto var(--app-top) !important; }
+  .sheet { width: var(--app-w); max-height: calc(var(--app-h) - 24px); border-radius: 16px 16px var(--app-r) var(--app-r); }
+  .verify-sheet, .start-sheet, .adjust-sheet, .app-sheet, .email-sheet { max-height: calc(var(--app-h) - 24px); }
+  .app-sheet[open] { height: min(calc(var(--app-h) - 24px), 640px); }
+  .app-list { max-height: calc(var(--app-h) * 0.46); }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   첫 시작 안내 (2026-11-14). 전체 화면, 그림 하나, 제목, 한 문장, 근거.
+   ════════════════════════════════════════════════════════════════════ */
+.onboard { min-height: var(--app-h, 100dvh); display: flex; flex-direction: column; padding: max(12px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom)); }
+.onboard > * + * { margin-top: 0; }
+.onboard-top { display: flex; align-items: center; justify-content: space-between; min-height: 44px; }
+.onboard-top .text-btn { margin-left: auto; text-decoration: none; }
+.onboard-dots { display: flex; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.onboard-dots li { width: 6px; height: 6px; border-radius: 3px; background: var(--sep); transition: width 0.3s var(--ease), background-color 0.3s; }
+.onboard-dots li[data-on] { width: 20px; background: var(--ink); }
+.onboard-body { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 12px; padding-block: 24px; animation: rise 0.45s var(--ease) backwards; }
+.onboard-art { display: grid; place-items: center; height: 200px; margin-bottom: 16px; }
+.onboard-art img { width: auto; max-width: 240px; height: auto; max-height: 160px; }
+.onboard h1 { font-size: 26px; line-height: 35px; font-weight: 700; letter-spacing: -0.5px; }
+.onboard-text { font-size: 16px; line-height: 26px; color: var(--sub); }
+.onboard-source { margin-top: 4px; font-size: 13px; color: var(--label3); }
+.onboard-actions { display: grid; justify-items: center; gap: 6px; }
+.onboard-actions .btn { width: 100%; }
+.onboard-actions .text-btn { min-height: 44px; text-decoration: none; }
+@media (prefers-reduced-motion: reduce) { .onboard-body { animation: none; } }
+
+/* ════════════════════════════════════════════════════════════════════
+   균형 (2026-11-14). 평면 그림에 맞춰 그림자와 떠오르는 효과를 걷고, 여백을 한 리듬으로 맞춘다.
+   좌우 20px, 제목과 첫 묶음 20px, 묶음 사이 28px, 묶음 안 8px.
+   ════════════════════════════════════════════════════════════════════ */
+.art, .empty .art, .auth-art, .hero-art, .records-art, .hello-mark .art, .burst-mark .art, .celebrate .burst-mark .art { filter: none !important; animation: none !important; }
+.screen { padding-inline: 20px; }
+.screen > * + * { margin-top: 20px; }
+.screen > .group + .group, .screen > .group + .section, .screen > .section + .group, .screen > .hub-hello + .group { margin-top: 28px; }
+.group { gap: 8px; }
+.headline { padding: 8px 0 0; }
+.headline h1 { font-size: 28px; line-height: 36px; }
+.headline-row + h1, .headline .date + h1 { margin-top: 2px; }
+.today-context { margin-top: 6px; font-size: 15px; line-height: 22px; }
+/* 탭 바는 어느 탭에서나 바닥에. 내용이 길어 닿을 때를 위해 바로 앞 요소에 아래 여백을 둔다. */
+.screen > .tabbar, .today .dock ~ .tabbar, .today .nudge ~ .tabbar, .dock + .tabbar { margin-top: auto; }
+.screen > :nth-last-child(2):not(.tour) { margin-bottom: 24px; }
+/* 코치의 한마디는 바닥에 떠 있지 않고 버튼 아래에 이어서 둔다. */
+.screen > .nudge { position: static; order: 0; margin-top: 20px; box-shadow: inset 0 0 0 0.5px var(--sep); -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--cell); }
+.today .dock { margin-top: 20px; padding-top: 0; }
+.today .group-foot { padding: 0 4px; }
+/* 빈 화면: 그림·제목·설명·버튼을 화면 가운데 한 덩어리로 */
+.empty { gap: 8px; margin-block: auto; padding: 24px 12px 40px; }
+.empty .art { width: 140px; margin-bottom: 8px; }
+.empty .btn { margin-top: 16px; }
+/* 코치 탭 첫 줄 */
+.hub-hello { gap: 12px; padding: 0 4px; }
+.welcome-top .auth-art { width: 132px; margin: 0 0 20px; }
+.welcome > .welcome-top { margin-block: auto; }
+.welcome > .welcome-actions { margin-top: 24px; }
+.welcome-top .auth-art img { width: 100%; height: auto; }
+
+/* 코치 대화 첫 화면: GPT식으로 인사를 가운데에, 입력창은 아래에 */
+.chat .hello { justify-items: center; margin-block: auto; padding: 0 12px; text-align: center; }
+.chat .hello .coach-mark { margin-bottom: 12px; }
+.chat .hello h1 { text-wrap: balance; }
+
+/* 안내 다시 보기: 제목 줄 오른쪽 끝의 물음표 */
+.tour-help { width: 36px; height: 36px; margin: -8px -8px -8px 0; color: var(--label3); }
+.headline-row { align-items: center; justify-content: flex-start; }
+.headline-row > :nth-child(2) { margin-left: auto; }
+.topbar .tour-help { width: 44px; height: 44px; margin: 0; }
+
+/* ===== 조약돌 그림 =====
+   장면마다 구도가 달라 가로·세로 비율이 제각각이다. 폭과 높이 상한을 함께 두어 무게를 맞춘다. */
+.empty .art { width: auto; height: auto; max-width: 240px; max-height: 170px; }
+.welcome-top .auth-art { width: auto; }
+.welcome-top .auth-art img { width: auto; height: auto; max-width: 240px; max-height: 120px; }
+.onboard-art { height: 220px; }
+.onboard-art img { width: auto; height: auto; max-width: 300px; max-height: 210px; }
+.celebrate .burst-mark .art { width: auto !important; height: auto !important; max-width: 220px; max-height: 180px; }
+
+/* ===== 시작 화면 =====
+   가운데 조약돌 짝꿍과 한 줄, 아래 버튼 둘. 방법은 아래에서 올라오는 창에서 고른다. */
+.welcome { justify-content: space-between; }
+.welcome > .welcome-hero { display: grid; justify-items: center; margin-block: auto; padding-top: 24px; text-align: center; }
+.welcome-hero .art { width: auto; height: auto; max-width: min(300px, 78vw); max-height: 220px; margin-bottom: 28px; }
+.welcome-hero .wordmark { font-size: 16px; }
+.welcome-hero h1 { margin-top: 6px; font-size: 30px; font-weight: 700; line-height: 1.3; letter-spacing: -0.03em; white-space: pre-line; }
+.welcome > .welcome-actions { gap: 4px; margin-top: 24px; }
+.welcome-actions .btn-primary { border-radius: 18px; }
+.welcome-again { color: var(--ink) !important; }
+.method-sheet h2 { margin-bottom: 12px; }
+.method-list { display: grid; gap: 10px; }
+.method-sheet .welcome-legal { margin-top: 12px; }
+
+/* ===== 균형 다시 보기 ===== */
+/* 목표 탭도 다른 탭처럼 윗줄 오른쪽에 버튼을 둔다. */
+.headline-tools { display: flex; align-items: center; gap: 4px; margin: -8px -8px -8px auto; }
+.headline-tools .nav-btn { width: 36px; height: 36px; margin: 0; }
+.headline-tools .tour-help { margin: 0; }
+/* 시작 전 잠금 상태는 테두리만 두어, 흰 카드인 할 일이 먼저 읽히게 한다. */
+.lock-state[data-tone="idle"] { background: transparent; box-shadow: inset 0 0 0 1px var(--sep); }
+/* 안내 말풍선은 초점을 받아도 테두리를 그리지 않는다(안의 버튼은 키보드로 옮기면 테두리가 보인다). */
+.tour-card:focus { outline: none; }
+/* 대화 요약에서 이름표가 빈 줄은 위 줄에 붙여 한 묶음으로 보이게 한다. */
+.understood div:has(> dt:empty) { padding-top: 0; border-top: 0; }
+/* 빈 화면에서 바로 계획을 다시 짜는 버튼은 다른 빈 화면의 주 버튼과 같은 크기로 둔다. */
+.empty .replan { width: 100%; margin-top: 16px; }
+.empty .replan .btn { margin-top: 0; min-height: 56px; font-size: 18.7px; font-weight: 700; }
+
+/* ===== 끝난 계획과 휴지통 ===== */
+/* 계획이 끝났거나 목표일이 지난 목표: 제목, 한 줄, 버튼. 버튼은 칸 너비에 맞춘다. */
+.plan-ended { display: grid; gap: 6px; }
+.plan-ended h2 { font-size: 17px; font-weight: 700; }
+.plan-ended p, .plan-missing p { color: var(--mut); font-size: 14px; }
+.plan-ended .btn, .plan-missing > .btn { margin-top: 10px; }
+.plan-missing .plan-missing-note { margin-top: 4px; font-size: 13px; }
+/* 목표 목록 아래 휴지통 줄. */
+.trash-link { margin-top: 24px; }
+/* 휴지통의 한 줄: 제목과 남은 날, 되살리기, 완전히 지우기. 오류는 줄 아래로 내린다. */
+.trash-list { padding: 0 16px; border-radius: 12px; background: var(--cell); list-style: none; }
+.trash-row { flex-wrap: wrap; gap: 8px; }
+.trash-row + .trash-row { border-top: 0.5px solid var(--sep); }
+.trash-row form { margin: 0; }
+.trash-row .btn { width: auto; min-height: 36px; margin: 0; padding: 0 14px; font-size: 14px; }
+.trash-row .nav-btn { margin: 0 -8px 0 0; }
+.trash-row .notice { flex-basis: 100%; }

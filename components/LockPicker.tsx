@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { LIMITS, LOCK_APPS, lockLabel } from "@/lib/goals";
 import { installedApps, native } from "@/lib/native";
-import { Button, Icon } from "./ui";
+import { Button, Icon, backdropClose } from "./ui";
 
 type Known = (typeof LOCK_APPS)[number];
 type Choice = { key: string; label: string; known?: Known; target: string };
@@ -133,7 +133,7 @@ export function LockPicker({ value, onChange, name }: { value: string[]; onChang
         </button>
       </div>
 
-      <dialog ref={dialog} className="sheet app-sheet" aria-label="잠글 앱 고르기">
+      <dialog ref={dialog} {...backdropClose()} className="sheet app-sheet" aria-label="잠글 앱 고르기">
         <span className="sheet-grip" aria-hidden="true" />
         <h2>잠글 앱을 골라 주세요</h2>
         <label className="search">

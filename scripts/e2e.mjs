@@ -21,12 +21,32 @@ const check = (name, ok, note = "") => {
   results.push({ name, ok });
   console.log(`${ok ? "PASS" : "FAIL"} ${name}${note ? " — " + note : ""}`);
 };
+// 목표·기록·코치 탭의 첫 안내는 본 것만 적어 두고 닫는다. 오늘·계획 화면의 안내는 따로 확인한다.
+const toursSeen = new Set();
 const settle = async () => {
   await page.waitForLoadState("networkidle");
   await page.waitForTimeout(900);
+  const tour = page.locator('.tour[data-tour="goals"], .tour[data-tour="records"], .tour[data-tour="coach"]');
+  if (await tour.count()) {
+    const id = await tour.getAttribute("data-tour");
+    if (!toursSeen.has(id)) await shot(`tour-${id}`);
+    toursSeen.add(id);
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(300);
+  }
 };
 let sheetStable = null;
 const UUID_URL = /\/goals\/[0-9a-f]{8}-[0-9a-f-]{27}/;
+// 로그인한 세션의 토큰으로 Supabase에 직접 쓴다(RLS 안에서 자기 데이터만). 잠금을 풀어야 이어 갈 수 있는 점검에만 쓴다.
+const SEOUL_TODAY = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+async function setLockDate(date) {
+  const parts = (await context.cookies()).filter((cookie) => /^sb-.+-auth-token(\.\d+)?$/.test(cookie.name)).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+  let raw = decodeURIComponent(parts.map((cookie) => cookie.value).join(""));
+  if (raw.startsWith("base64-")) raw = Buffer.from(raw.slice(7), "base64url").toString("utf8");
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/app_settings?user_id=not.is.null`, { method: "PATCH", body: JSON.stringify({ lock_date: date }), headers: { apikey: key, Authorization: `Bearer ${JSON.parse(raw).access_token}`, "Content-Type": "application/json" } });
+  if (!res.ok) throw new Error(`잠금 날짜 바꾸기 실패 ${res.status}`);
+}
 
 async function talk(first, { photo, answers = [], name } = {}) {
   await page.goto(BASE + "/goals/new");
@@ -131,7 +151,7 @@ async function confirmAndCreate(name) {
     await page.waitForTimeout(500);
     await shot(`${name}-tour-plan-2`);
     check("계획을 처음 받으면 코치가 화면을 짚어 가며 안내함", (await page.locator(".tour-hole").count()) === 1, await page.locator(".tour-card p").innerText());
-    await page.getByRole("button", { name: "건너뛰기" }).click();
+    await page.keyboard.press("Escape");
     await page.waitForTimeout(300);
   }
   await shot(`${name}-plan`, true);
@@ -147,7 +167,18 @@ await page.goto(BASE + "/today");
 await settle();
 check("로그인하지 않으면 가입 화면으로 보냄", /\/login/.test(page.url()));
 await shot("0-welcome");
-await page.getByRole("button", { name: "이메일로 시작하기" }).click();
+await page.getByRole("button", { name: "시작하기", exact: true }).click();
+await page.waitForTimeout(500);
+{
+  // 아래에서 올라온 창은 바깥 어두운 곳을 누르면 닫힌다.
+  const sheet = page.locator("dialog.sheet[open]");
+  await page.mouse.click(195, 40);
+  await page.waitForTimeout(300);
+  check("아래에서 올라온 창은 바깥을 누르면 닫힘", (await sheet.count()) === 0);
+}
+await page.getByRole("button", { name: "시작하기", exact: true }).click();
+// 카카오·구글이 켜져 있으면 방법을 고르는 창이 먼저 올라온다.
+if (await page.locator(".method-sheet[open]").count()) await page.getByRole("button", { name: "이메일로 가입하기" }).click();
 await page.getByRole("button", { name: "가입하고 시작하기" }).waitFor();
 await page.waitForTimeout(400);
 await shot("0-email-sheet");
@@ -168,13 +199,28 @@ if (TAIL) {
   await page.fill("#password", PASSWORD);
   await page.locator(".agree-all").click();
   await page.getByRole("button", { name: "가입하고 시작하기" }).click();
-  await page.waitForURL(/\/goals\/new/, { timeout: 30000 });
-  check("가입하면 바로 코치와의 대화로 들어감", true);
-  // 대화 도중 나갔다 와도 이어지는지 본다.
+  await page.waitForURL(/\/start/, { timeout: 30000 });
+  await page.waitForTimeout(600);
+  await shot("0-start-1");
+  // 근거 네 장을 넘기면 코치 대화가 열리고, 첫 화면에서 고민을 묻는다.
+  const slides = [];
+  for (let i = 0; i < 6 && /\/start/.test(page.url()); i++) {
+    slides.push(await page.locator(".onboard h1").innerText());
+    if (i === 1) await shot("0-start-2");
+    await page.locator(".onboard-actions .btn").click();
+    await page.waitForTimeout(600);
+  }
+  check("가입하면 근거를 담은 첫 안내가 전체 화면으로 나옴", slides.length === 4, slides.join(" / "));
+  await page.waitForURL(/\/goals\/new\?start=1/, { timeout: 30000 });
+  await settle();
+  await shot("0-start-ask");
+  check("첫 안내 다음 코치 대화 첫 화면에서 고민을 물음", /고민은 무엇인가요/.test(await page.locator(".hello h1").innerText()));
+  // 대화 도중 나갔다 와도 이어지는지도 본다.
   await page.fill("#say", "토익 850점을 받고 싶어");
   await page.keyboard.press("Enter");
   await page.waitForFunction(() => document.querySelectorAll(".coach-say").length > 0 && !document.querySelector(".typing"), null, { timeout: 120000 });
   const said = await page.locator(".coach-say").last().innerText();
+  await shot("0-chat-first");
   await page.goto(BASE + "/today");
   await settle();
   await page.goto(BASE + "/goals/new");
@@ -189,7 +235,10 @@ if (!TAIL) check("로그인하면 오늘 화면(빈 상태)이 보임", /아직 
 
 // 1. 날짜가 있는 목표
 console.log("\n[1] 대화 → 확인 → 날짜별 계획");
-const first = TAIL ? { ready: false, lockAsked: false } : await talk("11월 15일에 정보처리기사 실기 시험이 있어", {
+// 시험일은 늘 3주 뒤로 둔다. 날짜를 고정하면 그날이 다가올수록 계획에 들어갈 날이 줄어 점검이 실패한다.
+const examDay = new Date(Date.now() + 9 * 3600_000 + 21 * 86_400_000);
+const examText = `${examDay.getUTCMonth() + 1}월 ${examDay.getUTCDate()}일`;
+const first = TAIL ? { ready: false, lockAsked: false } : await talk(`${examText}에 정보처리기사 실기 시험이 있어`, {
   name: "1",
   answers: ["그때그때 달라요", `평일은 밤 9시 넘어서 1시간, 주말은 오전에 2시간 할 수 있어요. ${OFF_DAY}은 야근이라 못 해요.`, "필기는 붙었고 실기는 기출 1회독 했어요. SQL이 약해요." ],
 });
@@ -223,11 +272,11 @@ if (await page.locator(".tour").waitFor({ timeout: 4000 }).then(() => true, () =
   const said = [];
   for (let i = 0; i < 8 && (await page.locator(".tour").count()); i++) {
     said.push(await page.locator(".tour-card p").innerText());
-    if (i === 3) await shot("2-tour-today");
+    if (i === 1) await shot("2-tour-today");
     await page.locator(".tour-next").click();
     await page.waitForTimeout(450);
   }
-  check("오늘 화면에 처음 오면 코치가 할 일·잠금·조정을 차례로 안내함", said.length >= 4 && said.some((text) => /버거운 날/.test(text)) && (await page.locator(".tour").count()) === 0, `${said.length}단계`);
+  check("오늘 화면에 처음 오면 코치가 할 일·잠금·조정을 차례로 안내함", said.length >= 3 && said.some((text) => /버거운 날/.test(text)) && (await page.locator(".tour").count()) === 0, `${said.length}단계`);
   await page.reload();
   await page.waitForTimeout(1500);
   check("한 번 본 안내는 다시 뜨지 않음", (await page.locator(".tour").count()) === 0);
@@ -251,7 +300,7 @@ if (rowCount && !TAIL) {
   const sheetText = await page.locator("dialog.start-sheet[open]").innerText();
   check("시작 전에 할 일·잠기는 곳·바로 풀 수 없음·사진 보관을 알려 줌", /인스타그램 릴스/.test(sheetText) && /바로 푸는 방법은 없어요/.test(sheetText) && /7일 뒤 지워요/.test(sheetText) && /인증/.test(sheetText));
   await page.locator("dialog.start-sheet[open]").getByRole("button", { name: /^시작(하고 잠그기|하기)$/ }).click();
-  await page.locator(`.status[data-tone="lock"]`).waitFor({ timeout: 20000 });
+  await page.locator(`.lock-state[data-tone="lock"]`).waitFor({ timeout: 20000 });
   await shot("2-today-locked");
   check("시작하면 '잠금 중'으로 바뀌고 시작 버튼이 사라짐", (await page.getByRole("button", { name: "시작하기" }).count()) === 0);
 
@@ -278,7 +327,7 @@ if (rowCount && !TAIL) {
       await sheet.getByRole("button", { name: "판정이 틀린 것 같아요" }).click();
       await sheet.locator(".appeal textarea").fill("점검용 이의 제기입니다. 사진을 다시 봐 주세요.");
       await sheet.getByRole("button", { name: "다시 봐 달라고 요청" }).click();
-      await sheet.getByText("운영자가 확인해요").waitFor({ timeout: 20000 });
+      await sheet.getByText(/요청한 내용을 기록해 두었어요/).waitFor({ timeout: 20000 });
       check("판정에 이의를 제기할 수 있음", true);
     } else if (label === "퀴즈 인증") {
       await sheet.getByRole("button", { name: /문제 받기|새 문제로/ }).click();
@@ -325,8 +374,24 @@ if (goalUrl) {
   await settle();
   check("새로고침해도 목록 데이터가 그대로임", /정보처리기사/.test(await page.locator(".goal-list").innerText()));
 
+  // 계획한 기간이 끝났을 때의 "다음 계획 받기"는 코치 대화로 가서 이어서 짤지 새로 짤지 묻는다.
+  await page.goto(`${BASE}/goals/new?talk=next&goal=${goalUrl.split("/").pop()}`);
+  await settle();
+  await shot("4-next-plan");
+  const nextAsk = await page.locator(".msg-coach .bubble").first().innerText();
+  const nextChoices = await page.locator(".next-list li b").allInnerTexts();
+  check("다음 계획은 코치가 이어서 짤지 새로 짤지 물음", /이어서/.test(nextAsk) && /새로/.test(nextAsk) && nextChoices.join() === "이어서 짜기,새로 짜기", nextChoices.join(" / "));
+
   await page.goto(goalUrl + "/edit");
   await settle();
+  // 잠긴 동안에는 고치지 못하게 미리 알리고 저장을 막는다. 확인한 뒤 점검 계정의 잠금만 잠시 풀고 이어 간다.
+  if (await page.getByText(/잠금 중에는 목표를 고치거나/).count()) {
+    await shot("4-edit-locked");
+    check("잠금 중에는 목표 고치기를 미리 막음", await page.locator(".dock .btn").isDisabled());
+    await setLockDate(null);
+    await page.reload();
+    await settle();
+  }
   // 값이 실제로 달라져야 계획을 다시 짠다. 제목을 바꾸고 자료 사진도 올린다.
   const minutes = (await page.inputValue('input[name="daily_minutes"]')) === "90" ? "100" : "90";
   await page.fill("#title", "정보처리기사 실기 합격");
@@ -338,6 +403,7 @@ if (goalUrl) {
   await settle();
   await shot("4-after-edit", true);
   check("수정 후 계획을 다시 짬", /notice=replanned/.test(page.url()));
+  await setLockDate(SEOUL_TODAY);
   check("수정한 제목이 상세에 반영됨", (await page.locator(".detail-head h1").innerText()) === "정보처리기사 실기 합격");
   const image = page.locator(".material-view img");
   check(
@@ -390,6 +456,113 @@ if (goalUrl) {
   await settle();
   await shot("3-today-after-adjust");
   check("고른 조정안이 오늘 할 일에 반영됨", (await rows.count()) !== beforeCount, `${beforeCount}개 → ${await rows.count()}개`);
+
+  // 코치 탭은 상황별 대화를 고르는 곳이다.
+  await page.locator(`.tabbar a[href="/coach"]`).click();
+  await page.waitForURL(/\/coach$/);
+  await settle();
+  await shot("3-coach-hub");
+  await page.locator(".tour-help").click();
+  await page.waitForTimeout(500);
+  check("물음표를 누르면 본 안내를 다시 볼 수 있음", (await page.locator('.tour[data-tour="coach"]').count()) === 1);
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
+  const hub = await page.locator(".screen").innerText();
+  check("코치 탭에서 오늘 조정·새 목표를 골라 대화를 시작함", /오늘/.test(hub) && /목표/.test(hub) && (await page.locator(`a[href="/goals/new?talk=adjust"], .row-quiet`).count()) >= 1);
+}
+
+// 6. 놓친 날 이어 가기. 새 계정에는 지난 날이 없으므로, 점검 계정의 계획에 오늘 할 일을 지난 날짜로 복사해 '못 한 날'을 만든다.
+// 로그인한 세션의 토큰으로 Supabase에 직접 쓰므로 RLS 안에서 자기 데이터만 바뀐다.
+{
+  console.log("\n[6] 놓친 날 이어 가기");
+  const seoul = (offset) => new Date(Date.parse(`${new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date())}T00:00:00Z`) + offset * 86_400_000).toISOString().slice(0, 10);
+  const today = seoul(0);
+  const token = async () => {
+    const parts = (await context.cookies()).filter((cookie) => /^sb-.+-auth-token(\.\d+)?$/.test(cookie.name)).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+    let raw = decodeURIComponent(parts.map((cookie) => cookie.value).join(""));
+    if (raw.startsWith("base64-")) raw = Buffer.from(raw.slice(7), "base64url").toString("utf8");
+    return JSON.parse(raw).access_token;
+  };
+  const rest = async (path, init = {}) => {
+    const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/${path}`, { ...init, headers: { apikey: key, Authorization: `Bearer ${await token()}`, "Content-Type": "application/json", Prefer: "return=representation" } });
+    if (!res.ok) throw new Error(`REST ${res.status} ${(await res.text()).slice(0, 200)}`);
+    return res.json();
+  };
+  // 오늘 할 일(옮겨 온 것 제외)을 그 날짜의 할 일로 넣어, 그날을 인증하지 못한 날로 만든다.
+  const makeMissed = async (offset) => {
+    const [goal] = await rest("goals?select=id,plan&plan_status=eq.ready&order=created_at.desc&limit=1");
+    const date = seoul(offset);
+    // 오늘 할 일이 조정으로 비었으면 앞으로 할 일이 있는 가장 가까운 날에서 가져온다.
+    const fresh = (day) => day.tasks.filter((task) => !task.carried);
+    const source = fresh(goal.plan.days.find((day) => day.date === today) ?? { tasks: [] }).length ? fresh(goal.plan.days.find((day) => day.date === today)) : fresh(goal.plan.days.find((day) => day.date > today && fresh(day).length) ?? { tasks: [] });
+    const tasks = source.slice(0, 2).map((task, index) => ({ ...task, id: `${date}-${index + 1}`, title: `${task.title} (지난 날)` }));
+    goal.plan.days = [...goal.plan.days.filter((day) => day.date !== date), { date, tasks }].sort((a, b) => a.date.localeCompare(b.date));
+    await rest(`goals?id=eq.${goal.id}`, { method: "PATCH", body: JSON.stringify({ plan: goal.plan }) });
+    return tasks.length;
+  };
+  const ready = await rest("adjustments?select=kind&limit=1").then(() => true, () => false);
+  check("놓친 날 정리용 DB 칸이 준비됨(2026-11-12-recover.sql)", ready);
+  if (ready) {
+    // 6-1. 코치에게 사정을 말하지 않고 기본 방법으로 넘기기. AI 없이도 정리되는지 본다.
+    const made = await makeMissed(-2);
+    await page.goto(BASE + "/today");
+    await settle();
+    const line = page.locator(".recover-row");
+    check("지난 날 못 한 일이 있으면 오늘 화면 위에 한 줄이 보임", (await line.count()) === 1 && /그제 못 한 일 \d가지/.test(await line.innerText()), `${made}가지`);
+    await shot("6-today-missed");
+    await line.locator("a").click();
+    await page.waitForURL(/talk=recover/);
+    await page.locator(".chips .chip-btn").first().waitFor();
+    await shot("6-recover-start");
+    await page.getByRole("button", { name: "말하지 않고 정리할게요" }).click();
+    await page.locator(".recover-list li").first().waitFor({ timeout: 20000 });
+    const basic = await page.locator(".recover-list button").allInnerTexts();
+    basic.forEach((text) => console.log("  기본안: " + text.replace(/\n/g, " → ")));
+    check("사정을 말하지 않아도(AI 없이) 기본 방법이 나옴", basic.some((text) => /이번엔 넘기기/.test(text)) && basic.every((text) => /기록/.test(text)));
+    await page.locator(".recover-list button", { hasText: "이번엔 넘기기" }).click();
+    await page.getByText(/^정리했어요/).waitFor({ timeout: 20000 });
+    await page.goto(BASE + "/today");
+    await settle();
+    check("정리하면 오늘 화면의 한 줄이 사라짐", (await page.locator(".recover-row").count()) === 0);
+    await page.goto(BASE + "/records");
+    await settle();
+    check("넘긴 날은 기록에 '못 함'으로 남음", (await page.locator('.week li[data-state="missed"]').count()) >= 1);
+
+    // 6-2. 사정을 말하면 코치가 무엇을 살릴지 고른 안이 더해지고, 고르면 남은 날에 옮겨진다.
+    await makeMissed(-1);
+    await page.goto(BASE + "/goals/new?talk=recover");
+    await settle();
+    check("놓친 일을 코치가 먼저 말함", /어제 못 한 일/.test(await page.locator(".coach-say").first().innerText()));
+    await page.getByRole("button", { name: "바빴어요" }).click();
+    await page.locator(".recover-list li").first().waitFor({ timeout: 60000 });
+    await page.waitForTimeout(400);
+    await shot("6-recover-options");
+    const said = await page.locator(".coach-say").last().innerText();
+    const options = await page.locator(".recover-list button").allInnerTexts();
+    options.forEach((text) => console.log("  회복안: " + text.replace(/\n/g, " → ")));
+    console.log("  코치: " + said);
+    check("사정을 말하면 코치의 답과 함께 안이 나옴(AI가 실패해도 기본안은 남음)", options.length >= 2);
+    const spread = page.locator(".recover-list button", { hasText: /나눠 하기|옮기기|이어 하기/ });
+    if (await spread.count()) {
+      await spread.first().click();
+      await page.getByText(/^정리했어요/).waitFor({ timeout: 20000 });
+      await shot("6-recover-done");
+      await page.goto(BASE + "/today");
+      await settle();
+      const carried = await page.getByText(/요일에서 옮겨 옴/).count();
+      const [goal] = await rest("goals?select=plan&plan_status=eq.ready&order=created_at.desc&limit=1");
+      const copies = goal.plan.days.flatMap((day) => day.tasks.filter((task) => task.carried?.date === seoul(-1)));
+      const past = goal.plan.days.find((day) => day.date === seoul(-1)).tasks.length;
+      check("옮긴 일이 앞으로의 날에 사본으로 들어가고, 지난 날 계획은 그대로임", copies.length >= 1 && past >= 1, `사본 ${copies.length}개, 오늘 화면 표시 ${carried}개`);
+      await shot("6-today-after-recover");
+    } else console.log("  옮길 수 있는 안이 없어 옮기기 확인은 건너뜀");
+    await page.goto(BASE + "/goals/new?talk=recover");
+    await settle();
+    check("같은 날은 두 번 정리하지 않음", /정리할 놓친 일이 없어요/.test(await page.locator(".chat-body").innerText()));
+    const rows = await rest(`adjustments?select=kind,for_date,repairs,source&kind=eq.recover`);
+    check("정리 기록이 날마다 한 줄씩 남음", rows.length === 2 && new Set(rows.map((row) => row.for_date)).size === 2, JSON.stringify(rows));
+  }
 }
 
 // 기록 탭: 한 주 막대와 숫자
@@ -414,6 +587,14 @@ await page.getByRole("link", { name: /잠글 앱/ }).click();
 await page.waitForURL(/\/settings\/locks/);
 await settle();
 check("고친 것이 없으면 저장 버튼이 꺼져 있음", await page.getByRole("button", { name: "저장", exact: true }).isDisabled());
+// 오늘 할 일이 남아 잠겨 있으면 잠글 앱을 바꾸지 못하게 미리 막는다. 확인한 뒤 점검 계정의 잠금만 풀고 이어 간다.
+if (await page.getByText(/잠금 중에는 바꿀 수 없어요/).count()) {
+  await shot("5-locks-locked");
+  check("잠금 중에는 잠글 앱 바꾸기를 미리 막음", await page.getByRole("button", { name: /앱 더 고르기|잠글 앱 고르기/ }).isDisabled());
+  await setLockDate(null);
+  await page.reload();
+  await settle();
+}
 await page.getByRole("button", { name: /앱 더 고르기|잠글 앱 고르기/ }).click();
 await page.locator("dialog.app-sheet[open]").getByRole("button", { name: /틱톡/ }).click();
 await page.locator("dialog.app-sheet[open] .sheet-actions .btn").click();
@@ -431,12 +612,28 @@ check("개인정보 처리방침이 보임", /받는 정보와 쓰는 곳/.test(
 // 6. 목표 삭제와 탈퇴 (점검 데이터 정리)
 console.log("\n[6] 삭제와 탈퇴");
 if (goalUrl) {
+  await setLockDate(null);
   await page.goto(goalUrl);
   await settle();
   await page.locator(".topbar button.nav-btn").click();
   await page.waitForTimeout(400);
   await shot("6-delete-sheet");
-  await page.getByRole("button", { name: "지우기", exact: true }).click();
+  check("지우기 창이 휴지통 30일 보관을 알림", /휴지통.*30일/.test(await page.locator("#delete-description").innerText()));
+  await page.getByRole("button", { name: "휴지통으로 옮기기", exact: true }).click();
+  await page.waitForURL(/\/goals\?notice=deleted/, { timeout: 30000 });
+  await settle();
+  check("지운 목표는 목록 아래 휴지통 줄로 감", (await page.locator(".trash-link").count()) === 1);
+  await page.goto(BASE + "/goals/trash");
+  await settle();
+  await shot("6-trash");
+  check("휴지통에 지운 목표와 남은 날이 보임", /30일 뒤 완전히 지워져요|29일 뒤 완전히 지워져요/.test(await page.locator(".trash-list").innerText()));
+  await page.getByRole("button", { name: "되살리기" }).click();
+  await page.waitForURL(/notice=restored/, { timeout: 30000 });
+  await settle();
+  check("휴지통에서 되살리면 목표 화면으로 돌아옴", /휴지통에서 되살렸어요/.test(await page.locator("body").innerText()));
+  await page.locator(".topbar button.nav-btn").click();
+  await page.waitForTimeout(400);
+  await page.getByRole("button", { name: "휴지통으로 옮기기", exact: true }).click();
   await page.waitForURL(/\/goals\?notice=deleted/, { timeout: 30000 });
   await page.goto(goalUrl);
   await settle();
@@ -449,6 +646,15 @@ if (goalUrl) {
   await settle();
   await shot("6-after-delete");
   check("지운 목표는 목록에서 사라짐", (await page.locator(".goal-row").count()) === 0);
+  await page.goto(BASE + "/goals/trash");
+  await settle();
+  await page.locator(".trash-row .nav-btn").first().click();
+  await page.waitForTimeout(400);
+  await page.getByRole("button", { name: "완전히 지우기", exact: true }).click();
+  await page.waitForURL(/notice=purged/, { timeout: 30000 });
+  await settle();
+  await shot("6-trash-empty");
+  check("완전히 지우면 휴지통이 빔", /휴지통이 비었어요/.test(await page.locator("body").innerText()));
 }
 await page.goto(BASE + "/settings");
 await settle();
@@ -458,13 +664,15 @@ await page.getByRole("button", { name: /모두 지우고 탈퇴/ }).click();
 await page.waitForURL(/\/login\?bye=1/, { timeout: 30000 });
 await settle();
 await shot("6-bye");
-await page.locator(".welcome-foot .text-btn").click();
+await page.getByRole("button", { name: "이미 계정이 있어요" }).click();
+if (await page.locator(".method-sheet[open]").count()) await page.getByRole("button", { name: "이메일로 로그인" }).click();
 await page.fill("#email", EMAIL);
 await page.fill("#password", PASSWORD);
 await page.locator("dialog .btn-primary").click();
 await page.locator(".notice-error").last().waitFor({ timeout: 20000 });
 check("탈퇴한 계정으로는 다시 로그인되지 않음", /맞지 않아요/.test(await page.locator(".notice-error").last().innerText()));
 
+check("목표·기록·코치 탭을 처음 열면 짧은 안내가 한 번 뜸", ["goals", "records", "coach"].every((id) => toursSeen.has(id)), [...toursSeen].join(", "));
 const failed = results.filter((result) => !result.ok).length;
 console.log(`\n${results.length - failed}/${results.length} 통과`);
 await browser.close();

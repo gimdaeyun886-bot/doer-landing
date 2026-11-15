@@ -45,7 +45,7 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
   // 이메일 확인을 켜 둔 프로젝트에서는 아직 로그인되지 않는다.
   if (!data.session) return { email, mode: "in", notice: "가입 확인 메일을 보냈어요. 메일의 링크를 누른 뒤 로그인해 주세요." };
   await recordConsent();
-  redirect("/goals/new");
+  redirect("/start");
 }
 
 export async function signIn(_prev: AuthState, formData: FormData): Promise<AuthState> {
@@ -83,7 +83,7 @@ export async function agree(_prev: { message?: string }, formData: FormData): Pr
   if (!formData.get("agree_terms") || !formData.get("agree_privacy") || !formData.get("agree_age")) return { message: "필수 항목에 모두 동의해 주세요." };
   if (!(await getUser())) redirect("/login");
   await recordConsent();
-  redirect("/goals/new");
+  redirect("/start");
 }
 
 export async function signOut() {

@@ -61,19 +61,21 @@ export function Symbol({ size = 26, dark = false }: { size?: number; dark?: bool
 }
 
 // 그림을 바꾸면 이 값을 올리고 파일 이름도 함께 바꾼다. 이전 그림이 캐시에 남지 않게 하려는 것.
-const ART_VERSION = "v2";
+const ART_VERSION = "v5";
 
-// Do-er 전용 점토 오브제 그림. public/art 아래에 있고, 모두 같은 빛과 재질로 만들었다.
+// Do-er 그림. 로고의 두 조약돌(사용자 곁의 파트너 짝꿍. 코치와는 별개)이 나오는 평면 그림이다(public/art, 만드는 법은 design-preview/pebble2/style.txt).
 const ART = {
-  coach: { w: 720, h: 600 },
-  lock: { w: 535, h: 720 },
-  "lock-open": { w: 694, h: 720 },
-  stone: { w: 720, h: 539 },
-  candle: { w: 720, h: 699 },
-  cup: { w: 490, h: 720 },
-  stack: { w: 520, h: 720 },
-  still: { w: 720, h: 687 },
-  goals: { w: 720, h: 513 },
+  stone: { w: 720, h: 426 },
+  goals: { w: 645, h: 720 },
+  cup: { w: 720, h: 405 },
+  stack: { w: 720, h: 356 },
+  candle: { w: 720, h: 352 },
+  "lock-open": { w: 662, h: 720 },
+  lock: { w: 720, h: 679 },
+  steps: { w: 720, h: 381 },
+  check: { w: 720, h: 278 },
+  sprout: { w: 720, h: 327 },
+  hello: { w: 720, h: 493 },
 } as const;
 export type ArtName = keyof typeof ART;
 
@@ -82,12 +84,11 @@ export function Art({ name, size, className = "", priority = false }: { name: Ar
   return <Image className={`art ${className}`.trim()} src={`/art/${name}.${ART_VERSION}.png`} width={size} height={Math.round((size * h) / w)} alt="" aria-hidden="true" priority={priority} />;
 }
 
-// 코치 자리: 살구빛 원 안의 점토 심볼.
+// 코치 자리: 살구빛 원 안의 로고 심볼.
 export function CoachMark({ size = 38 }: { size?: number }) {
   return (
     <span className="coach-mark" style={{ width: size, height: size }} aria-hidden="true">
-      {/* 아주 작은 자리에서는 점토 그림이 얼룩처럼 보여 평면 심볼을 쓴다. */}
-      {size >= 44 ? <Art name="coach" size={Math.round(size * 0.78)} /> : <Symbol size={Math.round(size * 0.64)} />}
+      <Symbol size={Math.round(size * 0.68)} />
     </span>
   );
 }
@@ -114,7 +115,7 @@ export function Notice({ tone = "info", children }: { tone?: "info" | "success" 
   );
 }
 
-export function EmptyState({ title, children, action, art = "still" }: { title: string; children?: ReactNode; action?: ReactNode; art?: ArtName }) {
+export function EmptyState({ title, children, action, art = "sprout" }: { title: string; children?: ReactNode; action?: ReactNode; art?: ArtName }) {
   return (
     <div className="empty">
       <Art name={art} size={168} />
@@ -133,12 +134,12 @@ export function NavButton({ href, icon, label }: { href: string; icon: IconName;
   );
 }
 
-export function TabBar({ active }: { active: "today" | "goals" | "records" | "me" }) {
+export function TabBar({ active }: { active: "today" | "goals" | "records" | "coach" | "me" }) {
   const tabs = [
     { key: "today", href: "/today", icon: "today", label: "오늘" },
     { key: "goals", href: "/goals", icon: "goal", label: "목표" },
     { key: "records", href: "/records", icon: "bars", label: "기록" },
-    { key: "coach", href: "/goals/new", icon: "chat", label: "코치" },
+    { key: "coach", href: "/coach", icon: "chat", label: "코치" },
     { key: "me", href: "/settings", icon: "user", label: "내 정보" },
   ] as const;
   return (
@@ -190,3 +191,29 @@ export function RowLink({ href, icon, title, sub, value }: { href: string; icon?
 
 // 목표의 모양에 따라 정해지는 색.
 export const kindTone = (kind: "dated" | "finish" | "ongoing") => (kind === "dated" ? "coral" : kind === "ongoing" ? "green" : "coach");
+
+// 아래에서 올라오는 창(dialog)을 바깥 어두운 곳을 눌러 닫게 한다. 브라우저 기본 dialog는 Esc로만 닫힌다.
+// 창 안에서 누르기 시작해 바깥에서 뗀 경우(글자 고르기 등)는 닫지 않는다. busy면(저장·판정 중) 닫지 않는다.
+// requestClose가 있으면 그것으로 닫아, 각 창의 onCancel(진행 중 막기)도 그대로 거친다.
+type DialogPointer = { clientX: number; clientY: number; target: EventTarget; currentTarget: HTMLDialogElement };
+function outsideOf(event: DialogPointer) {
+  if (event.target !== event.currentTarget) return false;
+  const box = event.currentTarget.getBoundingClientRect();
+  return event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom;
+}
+export function backdropClose(busy = false) {
+  return {
+    onPointerDown: (event: DialogPointer) => {
+      event.currentTarget.dataset.downOutside = outsideOf(event) ? "1" : "";
+    },
+    onClick: (event: DialogPointer) => {
+      const dialog = event.currentTarget;
+      const began = dialog.dataset.downOutside === "1";
+      dialog.dataset.downOutside = "";
+      if (busy || !began || !outsideOf(event)) return;
+      const ask = (dialog as HTMLDialogElement & { requestClose?: () => void }).requestClose;
+      if (ask) ask.call(dialog);
+      else dialog.close();
+    },
+  };
+}

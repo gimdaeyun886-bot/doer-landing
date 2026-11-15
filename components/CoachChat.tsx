@@ -1,27 +1,18 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { askCoach, createGoal } from "@/app/goals/actions";
-import { EMPTY_VALUES, KINDS, formatDate, formatMinutes, lockLabels, materialError, type GoalValues } from "@/lib/goals";
-import type { Ask, ChatMessage, Slots } from "@/lib/plan";
-import { ADJUST_SAY_KEY } from "./AdjustChat";
+import { EMPTY_VALUES, KINDS, dedupeFacts, formatDate, formatMinutes, lockLabels, materialError, type GoalValues } from "@/lib/goals";
+import type { Ask, ChatMessage, Slots, TurnResult } from "@/lib/plan";
 import { isIOS } from "@/lib/native";
 import { ConfirmForm } from "./ConfirmForm";
 import { LockPicker } from "./LockPicker";
 import { Button, CoachMark, Icon, NavButton, Symbol } from "./ui";
 
 const EMPTY: Slots = { title: null, kind: null, deadline: null, schedule: null, daily_minutes: null, note: null, facts: [], material_summary: null, lock_targets: null };
+// 첫 안내에서 왔을 때 보여 주는 고민의 예.
+const WORRIES = ["시험이 한 달 남았는데 자꾸 휴대폰만 봐요", "운동을 시작해도 사흘을 못 가요", "미뤄 둔 포트폴리오를 이번 달엔 끝내고 싶어요"];
 const EXAMPLES = ["11월 15일 정보처리기사 실기, 평일 밤 1시간", "주 3회 아침 30분 달리기를 습관으로", "미뤄 둔 포트폴리오, 이번 달 안에"];
-const HOW = [
-  { icon: "chat", title: "말하면 계획을 짜요", text: "끝나는 날까지 날짜별로" },
-  { icon: "today", title: "매일 오늘 몫만", text: "자정까지 끝낼 한두 가지" },
-  { icon: "lock", title: "고른 앱이 잠겨요", text: "전화·메신저·검색은 열려 있어요" },
-  { icon: "camera", title: "인증하면 열려요", text: "과제에 맞는 방법으로 확인해요" },
-] as const;
-// 새 목표가 아니라 오늘 계획을 줄이거나 미루고 싶다는 말로 보이는 표현.
-const ADJUST_WORDS = /버거|힘들|못 ?하겠|못 ?할 ?것|조정|줄여|미뤄|미루|야근|아파|아프|시간이 없|오늘은 안|빼 ?줘/;
 const SEEN_KEY = "doer.chatted";
 // 대화 도중 다른 화면에 다녀와도 이어서 할 수 있게, 이 기기에 대화를 적어 둔다. 목표를 만들면 지운다.
 export const CHAT_KEY = "doer.chat.v2";
@@ -38,7 +29,7 @@ function toValues(slots: Slots): GoalValues {
     daily_minutes: slots.daily_minutes ? String(slots.daily_minutes) : "",
     schedule: slots.schedule ?? "",
     note: slots.note ?? "",
-    context: slots.facts.join("\n"),
+    context: dedupeFacts(slots.facts).join("\n"),
     material_summary: slots.material_summary ?? "",
     lock_targets: slots.lock_targets ?? [],
   };
@@ -46,12 +37,11 @@ function toValues(slots: Slots): GoalValues {
 
 // 코치와 자유롭게 대화하며 목표와 사정을 알려 주고, 마지막에 확인 장에서 한 번 확인한다.
 // savedLocks: 이미 골라 둔 잠글 앱. 있으면 코치가 다시 묻지 않는다.
-// canAdjust: 오늘 남은 할 일이 있어 계획을 조정할 수 있는지.
-export function CoachChat({ today, savedLocks, canAdjust }: { today: string; savedLocks: string[]; canAdjust: boolean }) {
+// start: 가입 직후 첫 안내에서 온 경우. 첫 화면에서 고민을 묻는다.
+export function CoachChat({ today, savedLocks, start = false }: { today: string; savedLocks: string[]; start?: boolean }) {
   // 아이폰이면 잠금 단계에서 미리 알린다. 첫 화면을 그린 뒤에 판별해 서버 화면과 어긋나지 않게 한다.
   const [ios, setIos] = useState(false);
   useEffect(() => setIos(isIOS()), []);
-  const router = useRouter();
   const fresh: Slots = { ...EMPTY, lock_targets: savedLocks.length ? savedLocks : null };
   const [items, setItems] = useState<Item[]>([]);
   const [slots, setSlots] = useState<Slots>(fresh);
@@ -102,20 +92,12 @@ export function CoachChat({ today, savedLocks, canAdjust }: { today: string; sav
   }, [restored, items, slots, ask, options, ready, hadPhoto]);
 
   useEffect(() => {
-    end.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    end.current?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "end" });
   }, [items, pending, ready, picked]);
 
   function send(message: string, photo?: File, locks?: string[]) {
     const clean = message.trim();
     if (!clean || pending) return;
-    // 대화를 시작하기 전에 오늘이 버겁다는 말을 하면, 그 말을 들고 조정하는 대화로 넘어간다.
-    if (canAdjust && items.length === 0 && !photo && ADJUST_WORDS.test(clean)) {
-      try {
-        sessionStorage.setItem(ADJUST_SAY_KEY, clean);
-      } catch {}
-      router.push("/goals/new?talk=adjust");
-      return;
-    }
     const next: Item[] = [...items, { role: "user", text: clean, image: photo ? URL.createObjectURL(photo) : undefined }];
     setItems(next);
     setText("");
@@ -133,7 +115,7 @@ export function CoachChat({ today, savedLocks, canAdjust }: { today: string; sav
         payload.set("material", photo);
       }
       // 잠글 앱은 코치가 받아 적지 않고, 고르기 창에서 고른 값을 그대로 쓴다.
-      const result = await askCoach(history, locks ? { ...slots, lock_targets: locks } : slots, payload);
+      const result: TurnResult = await askCoach(history, locks ? { ...slots, lock_targets: locks } : slots, payload).catch(() => ({ ok: false, message: "연결이 끊겨 답을 받지 못했어요. 인터넷을 확인하고 다시 보내 주세요." }));
       if (!result.ok) {
         setBroken(true);
         setItems((current) => [...current, { role: "coach", text: result.message, problem: true }]);
@@ -193,12 +175,15 @@ export function CoachChat({ today, savedLocks, canAdjust }: { today: string; sav
   const started = items.length > 0;
   // 계획을 짤 수 있는 최소한을 알았는지. 그 뒤로는 사용자가 언제든 대화를 끝내고 넘어갈 수 있다.
   const enough = Boolean(slots.title && slots.kind && (slots.kind !== "dated" || slots.deadline) && slots.daily_minutes && slots.lock_targets);
+  const facts = dedupeFacts(slots.facts);
   const known = [
     slots.title && ["목표", slots.title],
     slots.kind && ["기한", slots.kind === "dated" ? (slots.deadline ? formatDate(slots.deadline) : "날짜 있음") : KINDS.find((kind) => kind.value === slots.kind)!.short],
     slots.daily_minutes && ["시간", slots.schedule || `하루 ${formatMinutes(slots.daily_minutes)}`],
     slots.note && ["상황", slots.note],
-    ...slots.facts.map((fact) => ["사정", fact]),
+    // 같은 이름표가 줄마다 반복되지 않게 첫 줄에만 붙이고, 길어지면 세 줄까지만 보여 준다.
+    ...facts.slice(0, 3).map((fact, at) => [at === 0 ? "사정" : "", fact]),
+    facts.length > 3 && ["", `그 밖에 ${facts.length - 3}가지`],
     slots.lock_targets && ["잠금", slots.lock_targets.length ? lockLabels(slots.lock_targets).join(" · ") : "없음"],
   ].filter(Boolean) as [string, string][];
   const lastIsCoach = started && items[items.length - 1].role === "coach";
@@ -220,37 +205,12 @@ export function CoachChat({ today, savedLocks, canAdjust }: { today: string; sav
         )}
       </header>
 
-      <div className="chat-body">
+      <div className="chat-body" role="log" aria-live="polite">
         {!started && restored && (
           <div className="hello">
             <CoachMark size={64} />
-            <h1>{"안녕하세요, 코치예요.\n어떤 걸 해내고 싶어요?"}</h1>
-            <p>시험, 운동, 책, 미뤄 둔 작업 무엇이든요.</p>
-            {canAdjust && (
-              <Link href="/goals/new?talk=adjust" className="row talk-row">
-                <Icon name="swap" size={20} />
-                <span className="row-text">
-                  <b>오늘 계획 조정하기</b>
-                  <small>사정을 말하면 바꿀 방법과 대가를 보여 줘요</small>
-                </span>
-                <Icon name="chevR" size={16} />
-              </Link>
-            )}
-            {firstTime && (
-              <ol className="how">
-                {HOW.map((step) => (
-                  <li key={step.title}>
-                    <i>
-                      <Icon name={step.icon} size={18} />
-                    </i>
-                    <span>
-                      <b>{step.title}</b>
-                      {step.text}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            )}
+            <h1>{start ? "당신의 고민은 무엇인가요?" : "안녕하세요, 코치예요.\n어떤 걸 해내고 싶어요?"}</h1>
+            <p>{start ? "해내고 싶은데 잘 안 되는 일을 편하게 말해 주세요." : "시험, 운동, 책, 미뤄 둔 작업 무엇이든요."}</p>
           </div>
         )}
 
@@ -375,7 +335,7 @@ export function CoachChat({ today, savedLocks, canAdjust }: { today: string; sav
         <div className="examples">
           <p>이렇게 말해 볼 수 있어요</p>
           <ul>
-            {EXAMPLES.map((example) => (
+            {(start ? WORRIES : EXAMPLES).map((example) => (
               <li key={example}>
                 <button
                   type="button"
@@ -413,7 +373,7 @@ export function CoachChat({ today, savedLocks, canAdjust }: { today: string; sav
           rows={1}
           value={text}
           maxLength={300}
-          placeholder={started ? "편하게 말해 주세요" : "하고 싶은 일을 말해 주세요"}
+          placeholder={started ? "편하게 말해 주세요" : start ? "고민을 말해 주세요" : "하고 싶은 일을 말해 주세요"}
           onChange={(event) => setText(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {

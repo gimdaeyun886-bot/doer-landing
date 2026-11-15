@@ -49,9 +49,9 @@ export function PlanCalendar({ plan, today, deadline, passed }: { plan: Plan; to
         </button>
       </div>
 
-      <div className="cal-grid" role="grid" aria-label={`${label} 계획`}>
+      <div className="cal-grid" role="group" aria-label={`${label} 계획`}>
         {HEAD.map((day) => (
-          <span key={day} className="cal-head" role="columnheader">
+          <span key={day} className="cal-head" aria-hidden="true">
             {day}
           </span>
         ))}
@@ -65,7 +65,6 @@ export function PlanCalendar({ plan, today, deadline, passed }: { plan: Plan; to
             <button
               key={date}
               type="button"
-              role="gridcell"
               className="cal-cell"
               style={{ animationDelay: `${(index - offset) * 16}ms` }}
               disabled={!inPlan}

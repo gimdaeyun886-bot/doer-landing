@@ -9,6 +9,7 @@ export type PlanTask = {
   verify_type: VerifyType; // 이 과제에 맞춰 코치가 고른 인증 방식
   verify_method: string; // 그 방식의 이름. 예: 채점한 풀이 사진, 핵심 개념 퀴즈
   verify_guide: string;
+  carried?: { date: string; task_id: string }; // 놓친 날에서 옮겨 온 일이면 원래 날짜와 id. 다시 옮기지 않는다.
 };
 
 // 맞춤 인증. 과제의 성격에 따라 코치가 고른다.
@@ -44,7 +45,8 @@ export type AdjustOption = {
   drops: { goal_id: string; task_id: string }[]; // 이번에는 하지 않을 과제
 };
 
-export type PlanStatus = "pending" | "ready" | "failed";
+// expired: 목표일까지 인증이 하나도 없어 계획을 지운 목표. 목표는 남고, 사용자가 다시 짜거나 지운다.
+export type PlanStatus = "pending" | "ready" | "failed" | "expired";
 
 // 목표의 모양. 조정했을 때의 대가가 이 값에 따라 달라진다.
 export const KINDS = [
@@ -71,6 +73,7 @@ export type Goal = {
   plan_generated_at: string | null;
   created_at: string;
   updated_at: string;
+  deleted_at?: string | null; // 휴지통에 넣은 때. 30일 뒤 완전히 지운다.
 };
 
 export type GoalValues = {
@@ -158,6 +161,22 @@ export function goalTag(goal: Pick<Goal, "kind" | "deadline">) {
   const left = daysLeft(goal.deadline);
   if (left < 0) return "날짜 지남";
   return left === 0 ? "D-DAY" : `D-${left}`;
+}
+
+// 코치가 알게 된 사정 가운데 거의 같은 말을 하나로 줄인다. 한 문장이 다른 문장에 그대로 들어 있으면 긴 쪽만 남긴다.
+// 예: "SQL이 약함", "SQL 문법이 헷갈림"은 다른 말이라 둘 다 남고, "SQL이 약함"과 "SQL이 약함(특히 JOIN)"은 하나가 된다.
+export function dedupeFacts(facts: string[]) {
+  const norm = (text: string) => text.replace(/[\s.,·()\[\]'"!?~-]/g, "").toLowerCase();
+  const list = facts.map((fact) => fact.trim()).filter(Boolean);
+  return list.filter((fact, index) => {
+    const mine = norm(fact);
+    return !list.some((other, at) => {
+      if (at === index) return false;
+      const theirs = norm(other);
+      if (theirs === mine) return at < index; // 같은 말은 처음 것만 남긴다.
+      return theirs.includes(mine); // 더 긴 말에 들어 있으면 뺀다.
+    });
+  });
 }
 
 export function cleanLockTargets(items: string[]) {
@@ -268,5 +287,33 @@ export function tasksOn(goal: Pick<Goal, "plan" | "plan_status">, date: string):
   if (goal.plan_status !== "ready" || !goal.plan) return [];
   return goal.plan.days?.find((day) => day.date === date)?.tasks ?? [];
 }
+
+// 휴지통에 둔 목표를 완전히 지우기까지의 날 수.
+export const TRASH_DAYS = 30;
+
+// 계획에 든 일 가운데 할 일이 있는 마지막 날.
+export const lastTaskDay = (plan: Plan | null) => [...(plan?.days ?? [])].reverse().find((day) => day.tasks.length > 0)?.date ?? null;
+
+// 계획이 끝난 목표를 어떻게 다룰지.
+// running: 오늘이나 그 뒤에 할 일이 남음 / achieved: 날짜 있는·완성 목표에서 모든 일을 인증함(다음 계획을 묻지 않음)
+// behind: 인증이 밀린 채 끝남(목표와 계획을 그대로 두고 이어 가기를 권함) / expired: 목표일까지 인증이 하나도 없음(계획을 지움)
+// renew: 매주 반복하는 목표의 기간이 끝남(다시 짤지 묻는다)
+export type PlanEndState = "running" | "achieved" | "behind" | "expired" | "renew";
+export function planEndState(goal: Pick<Goal, "id" | "kind" | "deadline" | "plan" | "plan_status">, passed: Set<string>, today: string): PlanEndState | null {
+  if (goal.plan_status === "expired") return "expired";
+  if (goal.plan_status !== "ready" || !goal.plan?.days) return null;
+  const last = lastTaskDay(goal.plan);
+  if (!last || last >= today) return "running";
+  if (goal.kind === "ongoing") return "renew";
+  const tasks = goal.plan.days.flatMap((day) => day.tasks);
+  const done = tasks.filter((task) => passed.has(`${goal.id}:${task.id}`)).length;
+  if (done === tasks.length) return "achieved";
+  const target = goal.kind === "dated" && goal.deadline ? goal.deadline : last;
+  if (done === 0 && target < today) return "expired";
+  return "behind";
+}
+
+// 날짜 있는 목표의 목표일이 지났으면, 이어서 짜기 전에 새 날짜부터 정해야 한다.
+export const needsNewDate = (goal: Pick<Goal, "kind" | "deadline">, today: string) => goal.kind === "dated" && Boolean(goal.deadline) && goal.deadline! < today;
 
 export const planEnd = (plan: Plan) => plan.weeks[plan.weeks.length - 1]?.end ?? null;

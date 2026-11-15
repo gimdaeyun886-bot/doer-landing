@@ -3,7 +3,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { cache } from "react";
-import { MATERIAL_BUCKET, PAGE_SIZE, cleanLockTargets, type Goal, type KindFilter, type Proof } from "./goals";
+import { MATERIAL_BUCKET, PAGE_SIZE, TRASH_DAYS, addDays, cleanLockTargets, planEndState, tasksOn, todayInSeoul, type Goal, type KindFilter, type Proof } from "./goals";
+import { canRepair, findMissed, type RecoveryRow } from "./recover";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 // Supabase가 안내하는 새 이름(publishable)과 예전 이름(anon)을 모두 받는다.
@@ -63,7 +64,7 @@ export async function listGoals({ page, q, kind }: { page: number; q: string; ki
   // PostgREST 필터 문법에 쓰이는 문자는 검색어에서 뺀다.
   const term = q.replace(/[,()%*\\"]/g, " ").trim();
   const filtered = (columns: string, head = false) => {
-    let query = supabase.from("goals").select(columns, { count: "exact", head });
+    let query = supabase.from("goals").select(columns, { count: "exact", head }).is("deleted_at", null);
     if (kind !== "all") query = query.eq("kind", kind);
     if (term) query = query.ilike("title", `%${term}%`);
     return query;
@@ -79,15 +80,23 @@ export async function listGoals({ page, q, kind }: { page: number; q: string; ki
   return { goals: [] as Goal[], total: counted.count ?? 0 };
 }
 
-// 오늘 화면용: 계획이 준비된 목표를 최근 것부터 가져온다.
-export async function listPlannedGoals(limit = 12) {
-  const { data, error } = await (await getSupabase()).from("goals").select(await goalColumns()).eq("plan_status", "ready").order("created_at", { ascending: false }).limit(limit);
+// 오늘 화면용: 계획이 준비된 목표를 최근 것부터 가져온다. 끝난 목표도 기록 계산에 쓰이므로 넉넉히 읽는다.
+export async function listPlannedGoals(limit = 40) {
+  const { data, error } = await (await getSupabase()).from("goals").select(await goalColumns()).eq("plan_status", "ready").is("deleted_at", null).order("created_at", { ascending: false }).limit(limit);
   if (error) throw new Error(`오늘 할 일 조회 실패: ${error.message}`);
   return ((data ?? []) as unknown as Goal[]).filter((goal) => goal.plan?.days);
 }
 
+// 계획이 없는 목표 하나(만들지 못했거나, 목표일까지 인증이 없어 지운 것). 오늘 화면이 그 목표로 안내할 때 쓴다.
+export type Unplanned = { id: string; title: string; expired: boolean };
+export async function firstUnplannedGoal(): Promise<Unplanned | null> {
+  const { data } = await (await getSupabase()).from("goals").select("id,title,plan_status").neq("plan_status", "ready").is("deleted_at", null).order("created_at", { ascending: false }).limit(1);
+  const row = data?.[0];
+  return row ? { id: row.id as string, title: row.title as string, expired: row.plan_status === "expired" } : null;
+}
+
 export async function getGoal(id: string) {
-  const { data, error } = await (await getSupabase()).from("goals").select(await goalColumns()).eq("id", id).maybeSingle();
+  const { data, error } = await (await getSupabase()).from("goals").select(await goalColumns()).eq("id", id).is("deleted_at", null).maybeSingle();
   if (error) throw new Error(`상세 조회 실패: ${error.message}`);
   return data as unknown as Goal | null;
 }
@@ -112,15 +121,49 @@ export async function saveSettings(patch: { lock_targets?: string[]; lock_date?:
 
 const PROOF_COLUMNS = "goal_id,task_id,date,kind,passed,reason,image_path,appeal,created_at";
 
-// 연속 기록과 기록 화면용: 그날부터의 인증 기록과 조정한 날.
+// 오늘 아직 인증하지 않은 할 일의 수. 조정은 이것이 있을 때만 받는다.
+export async function todayLeft() {
+  const today = todayInSeoul();
+  const [goals, proofs] = await Promise.all([listPlannedGoals(), listProofs({ date: today })]);
+  const passed = new Set(proofs.filter((proof) => proof.passed).map((proof) => `${proof.goal_id}:${proof.task_id}`));
+  return goals.flatMap((goal) => tasksOn(goal, today).map((task) => `${goal.id}:${task.id}`)).filter((key) => !passed.has(key)).length;
+}
+
+// 지금 잠금이 걸려 있는지: 오늘 시작했고, 잠글 앱이 있고, 아직 인증하지 않은 할 일이 남았다.
+// 잠긴 동안에는 오늘 할 일이나 잠글 앱을 바꾸는 동작(목표 삭제·수정, 계획 다시 만들기, 잠글 앱 저장)을 막는다.
+export async function lockedNow() {
+  const today = todayInSeoul();
+  const settings = await getSettings();
+  if (settings.lockDate !== today || !settings.lockTargets.length) return false;
+  const [goals, proofs] = await Promise.all([listPlannedGoals(), listProofs({ date: today })]);
+  const passed = new Set(proofs.filter((proof) => proof.passed).map((proof) => `${proof.goal_id}:${proof.task_id}`));
+  return goals.some((goal) => tasksOn(goal, today).some((task) => !passed.has(`${goal.id}:${task.id}`)));
+}
+
+// 연속 기록과 기록 화면용: 그날부터의 인증 기록, 조정한 날, 놓친 날을 정리한 기록.
+// recovered가 null이면 놓친 날 정리용 칸이 아직 없는 DB다(supabase/migrations/2026-11-12-recover.sql을 돌리기 전).
 export async function listHistory(from: string) {
   const supabase = await getSupabase();
   const [proofs, adjustments] = await Promise.all([
     supabase.from("proofs").select(PROOF_COLUMNS).gte("date", from).limit(2000),
-    supabase.from("adjustments").select("date").gte("date", from).limit(500),
+    supabase.from("adjustments").select("date,kind,for_date,repairs").or(`date.gte.${from},for_date.gte.${from}`).limit(500),
   ]);
   if (proofs.error) throw new Error(`인증 기록 조회 실패: ${proofs.error.message}`);
-  return { proofs: (proofs.data ?? []) as Proof[], adjusted: new Set((adjustments.data ?? []).map((row) => row.date as string)) };
+  let rows = (adjustments.data ?? []) as { date: string; kind?: string; for_date?: string | null; repairs?: boolean }[];
+  let ready = !adjustments.error;
+  if (adjustments.error) {
+    if (adjustments.error.code !== "42703") console.error("adjustments read failed:", adjustments.error.message);
+    const old = await supabase.from("adjustments").select("date").gte("date", from).limit(500);
+    rows = (old.data ?? []) as { date: string }[];
+    ready = false;
+  }
+  const recoveries: RecoveryRow[] = rows.filter((row) => row.kind === "recover" && row.for_date).map((row) => ({ for_date: row.for_date as string, repairs: Boolean(row.repairs) }));
+  return {
+    proofs: (proofs.data ?? []) as Proof[],
+    adjusted: new Set(rows.filter((row) => (row.kind ?? "adjust") === "adjust").map((row) => row.date)),
+    recovered: ready ? recoveries : null,
+    repairs: new Set(recoveries.filter((row) => row.repairs).map((row) => row.for_date)),
+  };
 }
 
 export async function listProofs(filter: { goalId?: string; date?: string }) {
@@ -131,3 +174,82 @@ export async function listProofs(filter: { goalId?: string; date?: string }) {
   if (error) throw new Error(`인증 기록 조회 실패: ${error.message}`);
   return (data ?? []) as Proof[];
 }
+
+// 놓친 날 이어 가기에 필요한 것을 한 번에 읽는다. ready가 false면 DB에 정리용 칸이 아직 없다.
+export async function recoveryState() {
+  const today = todayInSeoul();
+  const [goals, history] = await Promise.all([listPlannedGoals(), listHistory(addDays(today, -120))]);
+  const resolved = new Set((history.recovered ?? []).map((row) => row.for_date));
+  const missed = history.recovered ? findMissed(goals, history.proofs, resolved, today) : [];
+  const passedToday = new Set(history.proofs.filter((proof) => proof.passed && proof.date === today).map((proof) => `${proof.goal_id}:${proof.task_id}`));
+  const todayOpen = goals.some((goal) => tasksOn(goal, today).some((task) => !passedToday.has(`${goal.id}:${task.id}`)));
+  return {
+    ready: Boolean(history.recovered),
+    ctx: { goals, missed, today, todayOpen },
+    repairOk: canRepair(history.recovered ?? [], today),
+    history,
+  };
+}
+
+/* ───────── 휴지통과 끝난 계획 정리 ───────── */
+
+export type TrashedGoal = { id: string; title: string; deleted_at: string };
+
+// 휴지통에 든 목표. 지운 지 오래된 것부터 위에 둔다(먼저 사라질 것).
+export async function listTrash() {
+  const { data, error } = await (await getSupabase()).from("goals").select("id,title,deleted_at").not("deleted_at", "is", null).order("deleted_at", { ascending: true }).limit(100);
+  if (error) throw new Error(`휴지통 조회 실패: ${error.message}`);
+  return (data ?? []) as TrashedGoal[];
+}
+
+export async function trashCount() {
+  const { count } = await (await getSupabase()).from("goals").select("id", { count: "exact", head: true }).not("deleted_at", "is", null);
+  return count ?? 0;
+}
+
+// 목표를 완전히 지운다. 인증 기록은 DB가 함께 지우고(on delete cascade), 올린 자료와 인증 사진 파일은 여기서 지운다.
+export async function purgeGoals(ids: string[]) {
+  if (!ids.length) return true;
+  const supabase = await getSupabase();
+  const [goals, proofs] = await Promise.all([
+    supabase.from("goals").select("material_path").in("id", ids),
+    supabase.from("proofs").select("image_path").in("goal_id", ids).not("image_path", "is", null),
+  ]);
+  const paths = [...(goals.data ?? []).map((row) => row.material_path as string | null), ...(proofs.data ?? []).map((row) => row.image_path as string | null)].filter((path): path is string => Boolean(path));
+  const { error } = await supabase.from("goals").delete().in("id", ids);
+  if (error) {
+    console.error("goal purge failed:", error.message);
+    return false;
+  }
+  if (paths.length) {
+    const removed = await supabase.storage.from(MATERIAL_BUCKET).remove(paths);
+    if (removed.error) console.error("goal files purge failed:", removed.error.message);
+  }
+  return true;
+}
+
+// 화면을 열 때 서버에서 한 번 정리한다. 실패해도 화면은 그대로 연다.
+// 1) 휴지통에 30일 넘게 있던 목표를 완전히 지운다.
+// 2) 날짜 있는·완성 목표가 목표일까지 인증 하나 없이 끝났으면 계획만 지운다(목표는 남김. lib/goals.ts의 planEndState).
+export const sweepGoals = cache(async () => {
+  try {
+    const supabase = await getSupabase();
+    const cutoff = new Date(Date.now() - TRASH_DAYS * 86_400_000).toISOString();
+    const { data: old } = await supabase.from("goals").select("id").not("deleted_at", "is", null).lt("deleted_at", cutoff).limit(50);
+    if (old?.length) await purgeGoals(old.map((row) => row.id as string));
+
+    const today = todayInSeoul();
+    const { data: ready } = await supabase.from("goals").select("id,kind,deadline,plan,plan_status").eq("plan_status", "ready").is("deleted_at", null).neq("kind", "ongoing").limit(100);
+    const ended = ((ready ?? []) as unknown as Goal[]).filter((goal) => planEndState(goal, new Set(), today) === "expired").map((goal) => goal.id);
+    if (!ended.length) return;
+    const { data: proofs } = await supabase.from("proofs").select("goal_id").in("goal_id", ended).eq("passed", true);
+    const kept = new Set((proofs ?? []).map((row) => row.goal_id as string));
+    const expire = ended.filter((id) => !kept.has(id));
+    if (!expire.length) return;
+    const { error } = await supabase.from("goals").update({ plan: null, plan_status: "expired" }).in("id", expire).eq("plan_status", "ready");
+    if (error) console.error("plan expire failed:", error.message);
+    else console.info(`plans expired: ${expire.length}`);
+  } catch (error) {
+    console.error("goal sweep failed:", error instanceof Error ? error.message : error);
+  }
+});

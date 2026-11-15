@@ -52,4 +52,4 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-export const config = { matcher: ["/today/:path*", "/goals/:path*", "/records/:path*", "/settings/:path*", "/login", "/consent"] };
+export const config = { matcher: ["/today/:path*", "/goals/:path*", "/records/:path*", "/settings/:path*", "/coach/:path*", "/start", "/login", "/consent"] };

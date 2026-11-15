@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { KINDS, LIMITS, materialError, type FormState, type GoalField, type GoalKind, type GoalValues } from "@/lib/goals";
+import { KINDS, LIMITS, lockLabels, materialError, type FormState, type GoalField, type GoalKind, type GoalValues } from "@/lib/goals";
 import { LockPicker } from "./LockPicker";
 import { Button, Icon, Notice, Symbol } from "./ui";
 
@@ -13,10 +13,13 @@ type Props = {
   initialFile?: File | null;
   currentMaterialUrl?: string | null;
   back: React.ReactNode;
+  locked?: boolean; // 잠금 중이면 고칠 수 없다. 오늘 할 일이 바뀌어 잠금이 풀리는 길이 되기 때문이다.
 };
 
+export const LOCKED_NOTE = "잠금 중에는 목표를 고치거나 지울 수 없어요. 오늘 할 일을 모두 인증하면 바꿀 수 있어요.";
+
 // 확인 장. 대화로 모은 내용을 한 장으로 보여 주고, 여기서만 직접 고친다. 목표를 고칠 때도 같은 장을 쓴다.
-export function ConfirmForm({ action, initial, today, mode, initialFile, currentMaterialUrl, back }: Props) {
+export function ConfirmForm({ action, initial, today, mode, initialFile, currentMaterialUrl, back, locked = false }: Props) {
   const [state, formAction, pending] = useActionState(action, { attempt: 0 });
   const values = state.values ?? initial;
   const errors = state.errors ?? {};
@@ -29,14 +32,15 @@ export function ConfirmForm({ action, initial, today, mode, initialFile, current
       <div className="topbar">{back}</div>
       <header className="headline">
         <p className="overline">{create ? "코치가 알아들은 것" : "목표 고치기"}</p>
-        <h1>{create ? "이대로 계획을\n짤까요?" : "달라진 점을\n고쳐 주세요"}</h1>
-        <p>{create ? "틀린 곳은 눌러서 고쳐요." : "바꾸면 오늘부터의 계획을 다시 짜요."}</p>
+        <h1>{create ? "이대로 계획을 짤까요?" : "달라진 점을 고쳐 주세요"}</h1>
+        <p>{create ? "틀린 곳은 눌러서 고쳐요." : "바꾸면 오늘 이후 계획을 다시 짜요. 지난 기록은 그대로예요."}</p>
       </header>
 
+      {locked && <Notice>{LOCKED_NOTE}</Notice>}
       {state.message && <Notice tone="error">{state.message}</Notice>}
 
       {/* 제출할 때마다 새로 그려서, 서버가 돌려준 값이 입력칸에 확실히 들어가게 한다. */}
-      <fieldset key={state.attempt} disabled={pending} className="sheet-list">
+      <fieldset key={state.attempt} disabled={pending || locked} className="sheet-list">
         <Row id="title" label="목표" error={errors.title}>
           <input id="title" name="title" type="text" defaultValue={values.title} maxLength={LIMITS.title} placeholder="예: 정보처리기사 실기" aria-invalid={Boolean(errors.title)} aria-describedby={errors.title ? "title-error" : undefined} />
         </Row>
@@ -59,11 +63,16 @@ export function ConfirmForm({ action, initial, today, mode, initialFile, current
         <MaterialRow serverError={errors.material} file={file} onFile={setFile} currentMaterialUrl={currentMaterialUrl} />
         {/* 대화에서 코치가 읽은 사진과 같은 사진일 때만 읽은 내용을 함께 보낸다. */}
         <input type="hidden" name="material_summary" value={file && file === initialFile ? values.material_summary : ""} />
-        <LockRow selected={values.lock_targets} />
       </fieldset>
+      {/* 잠글 앱은 사용자 한 명에게 한 벌이라 목표를 고칠 때는 내 정보에서 바꾼다. 카드 안에 넣지 않고 따로 둔다. */}
+      {create && (
+        <fieldset key={`lock-${state.attempt}`} disabled={pending} className="plain-fieldset">
+          <LockRow selected={values.lock_targets} />
+        </fieldset>
+      )}
 
       <div className="dock">
-        <Button type="submit" disabled={pending} aria-busy={pending}>
+        <Button type="submit" disabled={pending || locked} aria-busy={pending}>
           {create ? "계획 만들기" : "저장하고 계획 맞추기"}
         </Button>
       </div>
@@ -191,16 +200,34 @@ function MaterialRow({ serverError, file, onFile, currentMaterialUrl }: { server
   );
 }
 
+// 대화에서 이미 고른 잠글 앱은 한 줄로 보여 주고, 고치고 싶을 때만 펼친다.
 function LockRow({ selected }: { selected: string[] }) {
   const [value, setValue] = useState(selected);
+  const [open, setOpen] = useState(selected.length === 0);
   return (
-    <div className="sheet-row">
-      <span className="row-label" id="lock-label">
-        잠글 앱
-      </span>
-      <LockPicker value={value} onChange={setValue} name="lock" />
-      <p className="row-hint">모든 목표에 똑같이 적용돼요. 전화·메신저·검색은 잠기지 않아요.</p>
-    </div>
+    <section className="group lock-row">
+      <div className="section-head">
+        <h2 id="lock-label">잠글 앱</h2>
+        {!open && (
+          <button type="button" className="text-btn" onClick={() => setOpen(true)}>
+            고치기
+          </button>
+        )}
+      </div>
+      {open ? (
+        <LockPicker value={value} onChange={setValue} name="lock" />
+      ) : (
+        <>
+          <div className="section">
+            <p className="lock-summary">{value.length ? lockLabels(value).join(", ") : "고르지 않음"}</p>
+          </div>
+          {value.map((item) => (
+            <input key={item} type="hidden" name="lock" value={item} />
+          ))}
+        </>
+      )}
+      <p className="group-foot">모든 목표에 똑같이 적용돼요. 전화·메신저·검색은 잠기지 않아요.</p>
+    </section>
   );
 }
 

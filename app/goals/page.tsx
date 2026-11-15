@@ -3,9 +3,17 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { GoalCard } from "@/components/GoalCard";
 import { Pagination } from "@/components/Pagination";
-import { ButtonLink, EmptyState, Icon, Notice, TabBar } from "@/components/ui";
+import { ButtonLink, EmptyState, Icon, Notice, RowLink, TabBar } from "@/components/ui";
 import { KIND_FILTERS, PAGE_SIZE, type KindFilter } from "@/lib/goals";
-import { isConfigured, listGoals } from "@/lib/supabase";
+import { CoachTour, TourButton, type TourStep } from "@/components/CoachTour";
+
+// 목표 탭을 처음 열면 짚어 주는 것들.
+const TOUR: TourStep[] = [
+  { target: ".goal-list > li:first-child", text: "목표를 누르면 날짜별 계획과 그렇게 짠 이유가 보여요." },
+  { target: ".nav-add", text: "새 목표는 여기서 코치에게 말해요." },
+  { target: ".goal-list", text: "목표일까지 인증이 없으면 계획만 지워지고 목표는 남아요. 지운 목표는 휴지통에 30일 동안 있어요." },
+];
+import { isConfigured, listGoals, sweepGoals, trashCount } from "@/lib/supabase";
 
 export const metadata: Metadata = { title: "내 목표" };
 export const dynamic = "force-dynamic";
@@ -40,7 +48,8 @@ export default async function GoalsPage({ searchParams }: { searchParams: Search
     );
   }
 
-  const { goals, total } = await listGoals({ page, q, kind });
+  await sweepGoals();
+  const [{ goals, total }, trashed] = await Promise.all([listGoals({ page, q, kind }), trashCount()]);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   // 지우기 등으로 페이지 수가 줄었을 때는 마지막 페이지로 보낸다.
   if (page > totalPages) {
@@ -51,15 +60,20 @@ export default async function GoalsPage({ searchParams }: { searchParams: Search
 
   return (
     <div className="screen screen-warm goals">
-      <div className="topbar topbar-end">
-        <Link href="/goals/new" className="nav-btn nav-add" aria-label="새 목표">
-          <Icon name="plus" size={22} weight={2} />
-        </Link>
-      </div>
+      {/* 다른 탭과 같이 작은 윗줄과 큰 제목을 맨 위에 두고, 버튼은 윗줄 오른쪽에 둔다. */}
       <header className="headline">
+        <div className="headline-row">
+          <p className="date">{total > 0 ? `모두 ${total}개` : "코치와 함께 정해요"}</p>
+          <span className="headline-tools">
+            {goals.length > 0 && <TourButton id="goals" />}
+            <Link href="/goals/new" className="nav-btn nav-add" aria-label="새 목표">
+              <Icon name="plus" size={22} weight={2} />
+            </Link>
+          </span>
+        </div>
         <h1>내 목표</h1>
       </header>
-      {search.notice === "deleted" && <Notice tone="success">목표를 지웠어요.</Notice>}
+      {search.notice === "deleted" && <Notice tone="success">휴지통으로 옮겼어요. 30일 안에 되살릴 수 있어요.</Notice>}
 
       {(total > 5 || filtered) && (
         <>
@@ -83,7 +97,7 @@ export default async function GoalsPage({ searchParams }: { searchParams: Search
 
       {goals.length === 0 ? (
         filtered ? (
-          <EmptyState title="조건에 맞는 목표가 없어요" action={<ButtonLink href="/goals" variant="soft">전체 보기</ButtonLink>}>
+          <EmptyState title="조건에 맞는 목표가 없어요" art="goals" action={<ButtonLink href="/goals" variant="soft">전체 보기</ButtonLink>}>
             찾는 말을 바꿔 보세요.
           </EmptyState>
         ) : (
@@ -98,8 +112,14 @@ export default async function GoalsPage({ searchParams }: { searchParams: Search
               <GoalCard key={goal.id} goal={goal} />
             ))}
           </ul>
+          <CoachTour id="goals" steps={TOUR} need=".goal-list" />
           <Pagination page={page} totalPages={totalPages} params={params} basePath="/goals" />
         </>
+      )}
+      {trashed > 0 && !filtered && (
+        <div className="section rows trash-link">
+          <RowLink href="/goals/trash" icon="trash" title="휴지통" value={`${trashed}개`} />
+        </div>
       )}
       <TabBar active="goals" />
     </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { MILESTONES } from "@/lib/streak";
-import { Art, Button, Symbol } from "./ui";
+import { Art, Button, Symbol, backdropClose } from "./ui";
 
 const SEEN_KEY = "doer.celebrated";
 
@@ -24,7 +24,7 @@ function milestoneLine(streak: number) {
 }
 
 // 오늘 할 일을 모두 인증한 순간. 그날 처음 한 번만, 다른 창이 닫힌 뒤에 아래에서 올라온다.
-export function Celebrate({ today, streak, count, tomorrow }: { today: string; streak: number; count: number; tomorrow: string[] }) {
+export function Celebrate({ today, streak, count, tomorrow, unlocked }: { today: string; streak: number; count: number; tomorrow: string[]; unlocked: boolean }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [shown, setShown] = useState(Math.max(0, streak - 1));
   const milestone = MILESTONES.includes(streak);
@@ -51,7 +51,7 @@ export function Celebrate({ today, streak, count, tomorrow }: { today: string; s
   }, [today, streak]);
 
   return (
-    <dialog ref={dialog} className="sheet celebrate" data-milestone={milestone || undefined} aria-labelledby="celebrate-title">
+    <dialog ref={dialog} {...backdropClose()} className="sheet celebrate" data-milestone={milestone || undefined} aria-labelledby="celebrate-title">
       <div className="burst" aria-hidden="true">
         <span className="burst-mark">
           <Art name={streak >= 30 ? "cup" : streak >= 7 ? "candle" : "lock-open"} size={150} />
@@ -64,7 +64,11 @@ export function Celebrate({ today, streak, count, tomorrow }: { today: string; s
         <b key={shown}>{shown}</b>일째
       </p>
       <h2 id="celebrate-title" tabIndex={-1}>{milestone ? milestoneTitle(streak) : "오늘 몫을 다 해냈어요"}</h2>
-      <p>{milestone ? milestoneLine(streak) : `오늘 할 일 ${count}가지를 모두 인증했어요. 잠금도 풀렸어요.`}</p>
+      {/* 이정표 날에도 잠금이 풀렸다는 것은 꼭 말한다. 이 순간의 가장 큰 보상이다. */}
+      <p>
+        {milestone ? milestoneLine(streak) : `오늘 할 일 ${count}가지를 모두 인증했어요.`}
+        {unlocked && " 잠금도 풀렸어요."}
+      </p>
       <div className="group next-group">
         <div className="section-head">
           <h3>내일</h3>

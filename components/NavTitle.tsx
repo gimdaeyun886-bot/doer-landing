@@ -10,9 +10,18 @@ export function NavTitle() {
     const big = document.querySelector(".screen .headline h1");
     if (!big) return;
     setTitle(big.textContent ?? "");
-    const observer = new IntersectionObserver(([entry]) => setShown(!entry.isIntersecting), { rootMargin: "-44px 0px 0px 0px" });
+    // PC에서는 휴대폰 틀(.app)이 스크롤을 맡으므로 그 틀을 기준으로 본다.
+    const app = big.closest(".app");
+    const root = app && getComputedStyle(app).overflowY === "auto" ? app : null;
+    const observer = new IntersectionObserver(([entry]) => setShown(!entry.isIntersecting), { root, rootMargin: "-44px 0px 0px 0px" });
     observer.observe(big);
-    return () => observer.disconnect();
+    // 모두 인증해서 큰 제목이 바뀌면 작은 제목도 따라 바꾼다.
+    const watcher = new MutationObserver(() => setTitle(big.textContent ?? ""));
+    watcher.observe(big, { childList: true, characterData: true, subtree: true });
+    return () => {
+      observer.disconnect();
+      watcher.disconnect();
+    };
   }, []);
   if (!title) return null;
   return (

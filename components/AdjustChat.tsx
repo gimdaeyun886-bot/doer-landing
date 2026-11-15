@@ -6,12 +6,12 @@ import { applyAdjustment, requestAdjustment } from "@/app/goals/actions";
 import { LIMITS, type AdjustOption } from "@/lib/goals";
 import { CoachMark, Icon, NavButton } from "./ui";
 
-// 목표를 정하는 대화에서 "오늘 버거워요" 같은 말을 하면, 그 말을 들고 이 대화로 넘어온다.
-export const ADJUST_SAY_KEY = "doer.adjust.say";
+// 서버에 닿지 못했을 때(인터넷 끊김 등). 대화는 그대로 두고 다시 시도하게 한다.
+const OFFLINE = "연결이 끊겨 답을 받지 못했어요. 인터넷을 확인하고 다시 시도해 주세요.";
 
 type Item = { role: "user" | "coach"; text: string; problem?: boolean };
 
-const HELLO = "오늘 무슨 일이 있었나요? 사정을 말해 주면 바꿀 방법과 그 대가를 보여 드릴게요. 고르기 전에는 아무것도 바뀌지 않아요.";
+const HELLO = "오늘 무슨 일이 있었나요? 사정을 말해 주면 바꿀 방법과 그 대가를 보여 드릴게요.";
 
 // 코치와 대화하며 오늘 계획을 조정한다. 사정을 말하면 조정안과 대가가 나오고, 고르거나 그대로 하기로 한다.
 // left: 오늘 아직 인증하지 않은 할 일의 수.
@@ -23,10 +23,9 @@ export function AdjustChat({ left }: { left: number }) {
   const [done, setDone] = useState(false);
   const [pending, startTransition] = useTransition();
   const end = useRef<HTMLDivElement>(null);
-  const sent = useRef(false);
 
   useEffect(() => {
-    end.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    end.current?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "end" });
   }, [items, options, pending]);
 
   const say = (item: Item) => setItems((current) => [...current, item]);
@@ -39,31 +38,19 @@ export function AdjustChat({ left }: { left: number }) {
     setOptions(null);
     setReason(clean);
     startTransition(async () => {
-      const result = await requestAdjustment(clean);
+      const result = await requestAdjustment(clean).catch(() => ({ message: OFFLINE }) as Awaited<ReturnType<typeof requestAdjustment>>);
       if (!result.options) return say({ role: "coach", text: result.message ?? "방법을 찾지 못했어요. 다시 말해 주세요.", problem: true });
       say({ role: "coach", text: result.reply ?? "이렇게 바꿀 수 있어요." });
       setOptions(result.options);
     });
   }
 
-  // 다른 대화에서 넘겨받은 말이 있으면 바로 이어서 보낸다.
-  useEffect(() => {
-    if (sent.current) return;
-    sent.current = true;
-    try {
-      const carried = sessionStorage.getItem(ADJUST_SAY_KEY);
-      sessionStorage.removeItem(ADJUST_SAY_KEY);
-      if (carried) send(carried);
-    } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   function choose(option: AdjustOption) {
     if (pending) return;
     say({ role: "user", text: option.label });
     setOptions(null);
     startTransition(async () => {
-      const result = await applyAdjustment(reason, option);
+      const result = await applyAdjustment(reason, option).catch(() => ({ ok: false, message: OFFLINE }));
       if (!result.ok) return say({ role: "coach", text: result.message ?? "바꾸지 못했어요. 다시 시도해 주세요.", problem: true });
       say({ role: "coach", text: `바꿨어요. ${option.impact}` });
       setDone(true);
@@ -83,12 +70,12 @@ export function AdjustChat({ left }: { left: number }) {
         <NavButton href="/today" icon="chevL" label="오늘로" />
         <CoachMark />
         <div>
-          <p className="chat-name">코치</p>
+          <h1 className="chat-name">코치</h1>
           <p className="chat-sub">오늘 계획 조정</p>
         </div>
       </header>
 
-      <div className="chat-body">
+      <div className="chat-body" role="log" aria-live="polite">
         {items.map((item, index) =>
           item.role === "user" ? (
             <div key={index} className="msg msg-me">
@@ -109,7 +96,7 @@ export function AdjustChat({ left }: { left: number }) {
           ),
         )}
 
-        {pending && (
+        {pending && items[items.length - 1]?.role === "user" && (
           <div className="msg msg-coach">
             <CoachMark size={34} />
             <div>

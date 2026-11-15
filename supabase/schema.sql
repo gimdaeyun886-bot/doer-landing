@@ -26,13 +26,15 @@ create table public.goals (
   material_path     text,   -- 저장소 안의 파일 경로 (사용자 id/materials/…)
   material_summary  text,   -- 코치가 사진에서 읽은 내용
   plan              jsonb,  -- AI가 만든 계획: { summary, basis[], assumptions[], weeks[], days[] }
-  plan_status       text not null default 'pending' check (plan_status in ('pending', 'ready', 'failed')),
+  plan_status       text not null default 'pending' check (plan_status in ('pending', 'ready', 'failed', 'expired')),  -- expired: 목표일까지 인증이 없어 계획을 지움
   plan_generated_at timestamptz,
   created_at        timestamptz not null default now(),
   updated_at        timestamptz not null default now(),
+  deleted_at        timestamptz,  -- 휴지통에 넣은 때. 30일 뒤 앱이 완전히 지운다
   check (kind <> 'dated' or deadline is not null)
 );
 create index goals_user_idx on public.goals (user_id, created_at desc);
+create index goals_trash_idx on public.goals (user_id, deleted_at) where deleted_at is not null;
 
 -- 2) 인증 기록. 과제 하나에 가장 최근 인증 한 건을 둔다.
 create table public.proofs (
@@ -69,8 +71,14 @@ create table public.adjustments (
   reason     text not null,
   choice     text not null,
   impact     text not null,
-  created_at timestamptz not null default now()
+  kind       text not null default 'adjust' check (kind in ('adjust', 'recover')),  -- recover: 지난 날 못 한 일을 정리함
+  for_date   date,  -- recover일 때 정리한 지난 날짜
+  repairs    boolean not null default false,  -- 옮긴 일을 모두 인증하면 그날 기록을 되살리는 정리인지(7일에 한 번)
+  source     text check (source is null or source in ('basic', 'coach')),  -- 고른 안을 만든 쪽
+  created_at timestamptz not null default now(),
+  check (kind <> 'recover' or for_date is not null)
 );
+create unique index adjustments_recover_once on public.adjustments (user_id, for_date) where kind = 'recover';
 
 -- 5) 약관·개인정보 동의 기록
 create table public.consents (
@@ -83,7 +91,7 @@ create table public.consents (
 create table public.ai_runs (
   id            bigint generated always as identity primary key,
   user_id       uuid not null default auth.uid() references auth.users (id) on delete cascade,
-  purpose       text not null check (purpose in ('plan', 'chat', 'read', 'verify', 'adjust')),
+  purpose       text not null check (purpose in ('plan', 'chat', 'read', 'verify', 'adjust', 'recover')),
   goal_id       uuid references public.goals (id) on delete set null,
   ok            boolean not null,
   model         text not null,

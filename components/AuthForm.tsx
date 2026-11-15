@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { signIn, signInWith, signUp, type AuthState } from "@/app/auth/actions";
 import { native } from "@/lib/native";
-import { Art, Button, Icon, Notice, Symbol } from "./ui";
+import { Art, Button, Icon, Notice, backdropClose } from "./ui";
 
 const AGREEMENTS = [
   { name: "agree_terms", label: "이용약관에 동의해요", href: "/terms" },
@@ -13,12 +13,6 @@ const AGREEMENTS = [
 ] as const;
 
 type Provider = "google" | "kakao";
-
-const PROMISES = [
-  { icon: "chat", text: "말하면 코치가 끝나는 날까지 계획을 짜요" },
-  { icon: "lock", text: "오늘 몫을 끝낼 때까지 고른 앱이 잠겨요" },
-  { icon: "camera", text: "과제에 맞는 방법으로 인증하면 열려요" },
-] as const;
 
 // 각 회사가 로그인 버튼에 쓰도록 정해 둔 표식.
 function GoogleMark() {
@@ -40,9 +34,11 @@ function KakaoMark() {
   );
 }
 
-// 시작 화면. 카카오·구글이 켜져 있으면 그것을 먼저 보여 주고, 이메일은 아래에서 올라오는 창에서 받는다.
+// 시작 화면. 가운데에 조약돌 짝꿍과 한 줄, 아래에 '시작하기'와 '이미 계정이 있어요'만 둔다.
+// 누르면 아래에서 방법(카카오·구글·이메일)을 고르는 창이 올라오고, 이메일은 그 다음 창에서 받는다.
 export function AuthForm({ bye, providers = [], failed }: { bye?: boolean; providers?: Provider[]; failed?: boolean }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const methods = useRef<HTMLDialogElement>(null);
   const [inState, inAction, inPending] = useActionState<AuthState, FormData>(signIn, {});
   const [upState, upAction, upPending] = useActionState<AuthState, FormData>(signUp, {});
   const [mode, setMode] = useState<"in" | "up">("up");
@@ -72,55 +68,62 @@ export function AuthForm({ bye, providers = [], failed }: { bye?: boolean; provi
     });
 
   const openEmail = (next: "in" | "up") => {
+    methods.current?.close();
     setMode(next);
     dialog.current?.showModal();
   };
 
+  // 카카오·구글이 꺼져 있으면 고를 것이 없으니 바로 이메일 창을 연다.
+  const openMethods = (next: "in" | "up") => {
+    if (!ordered.length) return openEmail(next);
+    setMode(next);
+    methods.current?.showModal();
+  };
+
   return (
     <div className="screen screen-warm welcome">
-      <div className="welcome-top">
-        <span className="auth-art" aria-hidden="true">
-          <Art name="still" size={240} priority />
-        </span>
+      <div className="welcome-hero">
+        <Art name="hello" size={320} priority />
         <p className="wordmark">do-er</p>
         <h1>{"계획을,\n오늘의 실행으로"}</h1>
-        <ul className="promises">
-          {PROMISES.map((item) => (
-            <li key={item.text}>
-              <Icon name={item.icon} size={17} />
-              {item.text}
-            </li>
-          ))}
-        </ul>
       </div>
 
       <div className="welcome-actions">
         {bye && <Notice tone="success">탈퇴했어요. 올린 사진과 기록을 모두 지웠어요.</Notice>}
-        {(socialError || failed) && <Notice tone="error">{socialError ?? "로그인을 끝내지 못했어요. 다시 시도해 주세요."}</Notice>}
+        {failed && <Notice tone="error">로그인을 끝내지 못했어요. 다시 시도해 주세요.</Notice>}
 
-        {ordered.map((provider) => (
-          <button key={provider} type="button" className={`btn social-btn social-${provider}`} disabled={social} onClick={() => continueWith(provider)}>
-            {provider === "kakao" ? <KakaoMark /> : <GoogleMark />}
-            <span>{provider === "kakao" ? "카카오로 시작하기" : "Google로 시작하기"}</span>
-          </button>
-        ))}
-        <button type="button" className={`btn ${ordered.length ? "social-btn social-email" : "btn-primary"}`} onClick={() => openEmail("up")}>
-          {ordered.length > 0 && <Icon name="mail" size={20} />}
-          <span>이메일로 시작하기</span>
+        <Button type="button" disabled={social} onClick={() => openMethods("up")}>
+          시작하기
+        </Button>
+        <button type="button" className="btn btn-ghost welcome-again" disabled={social} onClick={() => openMethods("in")}>
+          이미 계정이 있어요
         </button>
-
-        <p className="welcome-foot">
-          이미 이메일로 가입했나요?
-          <button type="button" className="text-btn" onClick={() => openEmail("in")}>
-            로그인
-          </button>
-        </p>
-        <p className="welcome-legal">
-          시작하면 <Link href="/terms">이용약관</Link>과 <Link href="/privacy">개인정보 처리방침</Link>을 확인하고 동의하게 돼요.
-        </p>
       </div>
 
-      <dialog ref={dialog} className="sheet email-sheet" aria-labelledby="email-title">
+      <dialog ref={methods} {...backdropClose(social)} className="sheet method-sheet" aria-labelledby="method-title">
+        <span className="sheet-grip" aria-hidden="true" />
+        <h2 id="method-title">{signup ? "어떻게 시작할까요?" : "다시 왔네요"}</h2>
+        {socialError && <Notice tone="error">{socialError}</Notice>}
+        <div className="method-list">
+          {ordered.map((provider) => (
+            <button key={provider} type="button" className={`btn social-btn social-${provider}`} disabled={social} onClick={() => continueWith(provider)}>
+              {provider === "kakao" ? <KakaoMark /> : <GoogleMark />}
+              <span>{provider === "kakao" ? "카카오로 계속하기" : "Google로 계속하기"}</span>
+            </button>
+          ))}
+          <button type="button" className="btn social-btn social-email" onClick={() => openEmail(mode)}>
+            <Icon name="mail" size={20} />
+            <span>{signup ? "이메일로 가입하기" : "이메일로 로그인"}</span>
+          </button>
+        </div>
+        {signup && (
+          <p className="welcome-legal">
+            시작하면 <Link href="/terms">이용약관</Link>과 <Link href="/privacy">개인정보 처리방침</Link>을 확인하고 동의하게 돼요.
+          </p>
+        )}
+      </dialog>
+
+      <dialog ref={dialog} {...backdropClose(pending)} className="sheet email-sheet" aria-labelledby="email-title">
         <span className="sheet-grip" aria-hidden="true" />
         <div className="sheet-tabs" role="tablist" aria-label="가입 또는 로그인">
           <button type="button" role="tab" aria-selected={signup} onClick={() => setMode("up")}>

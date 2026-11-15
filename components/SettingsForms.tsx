@@ -1,15 +1,16 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { deleteAccount } from "@/app/auth/actions";
+import { useFormStatus } from "react-dom";
+import { deleteAccount, signOut } from "@/app/auth/actions";
 import { saveLocks } from "@/app/goals/actions";
 import { lockAppCount } from "@/lib/goals";
 import { native } from "@/lib/native";
 import { LockPicker } from "./LockPicker";
-import { Button, Icon, NavButton, Notice } from "./ui";
+import { Button, Icon, NavButton, Notice, backdropClose } from "./ui";
 
 // 잠글 앱 화면. 고친 것이 있을 때만 위쪽 '저장'이 켜진다. 모든 목표에 똑같이 적용된다.
-export function LockSettings({ initial }: { initial: string[] }) {
+export function LockSettings({ initial, locked }: { initial: string[]; locked: boolean }) {
   const [value, setValue] = useState(initial);
   const [state, action, pending] = useActionState(saveLocks, {});
   const dirty = JSON.stringify(value) !== JSON.stringify(initial);
@@ -18,7 +19,7 @@ export function LockSettings({ initial }: { initial: string[] }) {
     <form action={action} className="lock-settings">
       <div className="topbar">
         <NavButton href="/settings" icon="chevL" label="내 정보로 돌아가기" />
-        <button type="submit" className="nav-text" disabled={pending || !dirty}>
+        <button type="submit" className="nav-text" disabled={pending || !dirty || locked}>
           {pending ? "저장 중" : "저장"}
         </button>
       </div>
@@ -26,9 +27,10 @@ export function LockSettings({ initial }: { initial: string[] }) {
         <p className="date">{count ? `${count}개 앱` : "고른 앱 없음"}</p>
         <h1>잠글 앱</h1>
       </header>
+      {locked && <Notice>잠금 중에는 바꿀 수 없어요. 오늘 할 일을 모두 인증하면 바꿀 수 있어요.</Notice>}
       {state.message && <Notice tone="error">{state.message}</Notice>}
-      {state.saved && !dirty && <Notice tone="success">저장했어요. 다음 시작부터 적용돼요.</Notice>}
-      <fieldset disabled={pending} className="plain-fieldset">
+      {state.saved && !dirty && <Notice tone="success">저장했어요.</Notice>}
+      <fieldset disabled={pending || locked} className="plain-fieldset">
         <LockPicker value={value} onChange={setValue} name="lock" />
       </fieldset>
     </form>
@@ -132,7 +134,7 @@ export function DeleteAccount() {
           <b>탈퇴하기</b>
         </span>
       </button>
-      <dialog ref={dialog} className="sheet" aria-labelledby="bye-title">
+      <dialog ref={dialog} {...backdropClose(pending)} className="sheet" aria-labelledby="bye-title" onCancel={(event) => pending && event.preventDefault()}>
         <span className="sheet-grip" aria-hidden="true" />
         <h2 id="bye-title">정말 탈퇴할까요?</h2>
         <p>목표, 계획, 인증 기록, 올린 사진이 모두 바로 지워지고 되돌릴 수 없어요.</p>
@@ -141,16 +143,36 @@ export function DeleteAccount() {
           <label className="confirm-word" htmlFor="confirm">
             계속하려면 <b>탈퇴</b>라고 적어 주세요
           </label>
-          <input id="confirm" name="confirm" type="text" autoComplete="off" className="confirm-input" />
+          <input id="confirm" name="confirm" type="text" autoComplete="off" className="confirm-input" readOnly={pending} />
           <Button type="submit" variant="danger" disabled={pending}>
             <Icon name="trash" size={18} />
             {pending ? "지우는 중…" : "모두 지우고 탈퇴"}
           </Button>
-          <Button type="button" variant="quiet" onClick={() => dialog.current?.close()}>
+          <Button type="button" variant="quiet" disabled={pending} onClick={() => dialog.current?.close()}>
             그대로 둘게요
           </Button>
         </form>
       </dialog>
     </>
+  );
+}
+
+// 로그아웃 줄. 누른 뒤에는 다시 누르지 못하게 잠그고 진행 중임을 보여 준다.
+export function SignOutRow() {
+  return (
+    <form action={signOut}>
+      <SignOutButton />
+    </form>
+  );
+}
+
+function SignOutButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" className="row" disabled={pending} aria-busy={pending}>
+      <span className="row-text">
+        <b>{pending ? "로그아웃하는 중…" : "로그아웃"}</b>
+      </span>
+    </button>
   );
 }

@@ -2,8 +2,8 @@
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { appealProof, startQuiz, verifyTask, type VerifyState } from "@/app/goals/actions";
-import { LIMITS, VERIFY_TYPES, formatMinutes, materialError, verifyTypeOf, type PlanTask } from "@/lib/goals";
-import { Button, Icon, Notice } from "./ui";
+import { LIMITS, VERIFY_TYPES, formatMinutes, materialError, verifyTypeOf, weekdayOf, type PlanTask } from "@/lib/goals";
+import { Button, Icon, Notice, backdropClose } from "./ui";
 
 type Props = { goalId: string; goalTitle: string; task: PlanTask; proof: { passed: boolean; reason: string; appealed: boolean } | null };
 
@@ -72,6 +72,7 @@ export function TaskVerify({ goalId, goalTitle, task, proof }: Props) {
           <b>{task.title}</b>
           <small>
             {type.label} · 약 {formatMinutes(task.minutes)}
+            {task.carried && ` · ${weekdayOf(task.carried.date)}요일에서 옮겨 옴`}
             {judged && !passed && <em> · 다시 인증</em>}
           </small>
         </span>
@@ -79,7 +80,7 @@ export function TaskVerify({ goalId, goalTitle, task, proof }: Props) {
         <Icon name="chevR" size={16} />
       </button>
 
-      <dialog ref={dialog} className="sheet verify-sheet" aria-labelledby={`verify-${task.id}`}>
+      <dialog ref={dialog} {...backdropClose(pending || appealing || loadingQuiz)} className="sheet verify-sheet" aria-labelledby={`verify-${task.id}`}>
         <span className="sheet-grip" aria-hidden="true" />
         <p className="sheet-over">{goalTitle}</p>
         <h2 id={`verify-${task.id}`}>{task.title}</h2>
@@ -121,6 +122,7 @@ export function TaskVerify({ goalId, goalTitle, task, proof }: Props) {
                     <Button type="button" variant="quiet" onClick={() => input.current?.click()}>
                       다른 사진
                     </Button>
+                    {later}
                   </>
                 ) : (
                   <>
@@ -152,6 +154,7 @@ export function TaskVerify({ goalId, goalTitle, task, proof }: Props) {
                     ))}
                   </ol>
                   <Button type="submit">답 보내기</Button>
+                  {later}
                 </>
               ) : loadingQuiz ? (
                 <Waiting>문제를 만들고 있어요</Waiting>
@@ -187,11 +190,11 @@ export function TaskVerify({ goalId, goalTitle, task, proof }: Props) {
         {judged && !passed && !pending && (
           <div className="appeal">
             {appealed ? (
-              <p className="muted">다시 봐 달라고 요청했어요. 운영자가 확인해요.</p>
+              <p className="muted">다시 봐 달라고 요청한 내용을 기록해 두었어요. 그동안 다시 인증해도 돼요.</p>
             ) : appealOpen ? (
               <form action={appealAction}>
                 <label htmlFor={`a-${task.id}`}>어떤 점이 틀렸나요?</label>
-                <textarea id={`a-${task.id}`} name="appeal" rows={2} maxLength={LIMITS.appeal} placeholder="예: 3문제를 다 풀었는데 사진이 흐려서 안 보인 것 같아요" required />
+                <textarea id={`a-${task.id}`} name="appeal" rows={2} maxLength={LIMITS.appeal} placeholder="예: 3문제를 다 풀었는데 사진이 흐려서 안 보인 것 같아요" required readOnly={appealing} />
                 {appeal.message && <p className="row-error">{appeal.message}</p>}
                 <Button type="submit" variant="quiet" disabled={appealing}>
                   {appealing ? "보내는 중…" : "다시 봐 달라고 요청"}

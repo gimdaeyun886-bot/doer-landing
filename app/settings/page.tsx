@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { signOut } from "@/app/auth/actions";
-import { AccessStatus, DeleteAccount } from "@/components/SettingsForms";
+import { AccessStatus, DeleteAccount, SignOutRow } from "@/components/SettingsForms";
 import { RowLink, Section, TabBar } from "@/components/ui";
 import { lockAppCount } from "@/lib/goals";
 import { getSettings, getUser } from "@/lib/supabase";
@@ -29,13 +28,7 @@ export default async function SettingsPage() {
       </Section>
 
       <Section className="rows">
-        <form action={signOut}>
-          <button type="submit" className="row">
-            <span className="row-text">
-              <b>로그아웃</b>
-            </span>
-          </button>
-        </form>
+        <SignOutRow />
         <DeleteAccount />
       </Section>
       <TabBar active="me" />

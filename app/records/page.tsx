@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
+import { CoachTour, TourButton, type TourStep } from "@/components/CoachTour";
 import { RecordsView } from "@/components/RecordsView";
+
+// 기록 탭을 처음 열면 짚어 주는 것들.
+const TOUR: TourStep[] = [
+  { target: ".week", text: "지난 일주일이에요. 끝낸 날, 조정한 날, 못 한 날이 표시돼요." },
+  { target: ".tiles", text: "숫자는 인증한 만큼만 올라가요." },
+];
 import { ButtonLink, EmptyState, Notice, TabBar } from "@/components/ui";
 import { addDays, todayInSeoul } from "@/lib/goals";
 import { dayRecord, streakOf } from "@/lib/streak";
@@ -19,16 +26,21 @@ export default async function RecordsPage() {
   }
   const today = todayInSeoul();
   const [goals, history] = await Promise.all([listPlannedGoals(), listHistory(addDays(today, -120))]);
-  const week = Array.from({ length: 7 }, (_, index) => dayRecord(goals, history.proofs, history.adjusted, addDays(today, index - 6), today));
-  const streak = streakOf(goals, history.proofs, history.adjusted, today);
-  const proofs = history.proofs.filter((proof) => proof.passed && proof.date >= week[0].date).length;
+  const week = Array.from({ length: 7 }, (_, index) => dayRecord(goals, history.proofs, history.adjusted, addDays(today, index - 6), today, history.repairs));
+  const streak = streakOf(goals, history.proofs, history.adjusted, today, 120, history.repairs);
+  // 휴지통에 넣은 목표의 인증은 세지 않는다.
+  const live = new Set(goals.map((goal) => goal.id));
+  const proofs = history.proofs.filter((proof) => proof.passed && proof.date >= week[0].date && live.has(proof.goal_id)).length;
   // 지난 날이 하나도 없고 인증도 없으면 0으로 채운 칸 대신 빈 상태를 보여 준다.
   const nothingYet = proofs === 0 && !week.some((day) => day.state === "done" || day.state === "adjusted" || day.state === "missed");
 
   return (
     <div className="screen records">
       <header className="headline">
-        <p className="date">최근 일주일</p>
+        <div className="headline-row">
+          <p className="date">최근 일주일</p>
+          {goals.length > 0 && !nothingYet && <TourButton id="records" />}
+        </div>
         <h1>기록</h1>
       </header>
 
@@ -41,7 +53,10 @@ export default async function RecordsPage() {
           오늘 할 일을 인증하면 여기에 하루씩 쌓여요.
         </EmptyState>
       ) : (
-        <RecordsView week={week} streak={streak} proofs={proofs} />
+        <>
+          <RecordsView week={week} streak={streak} proofs={proofs} />
+          <CoachTour id="records" steps={TOUR} need=".week" />
+        </>
       )}
       <TabBar active="records" />
     </div>
